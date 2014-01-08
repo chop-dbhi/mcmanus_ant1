@@ -39,14 +39,16 @@ rule starindex:
 	output: CHRNAME
 	shell: "{STAR} --limitGenomeGenerateRAM 54760833024 --runMode genomeGenerate --genomeDir {STARREFDIR} --genomeFastaFiles {input}"
 
+#cutadapt will auto-gz if .gz is in the output name
 rule trim:
 	input: "raw/{sample}.fastq"
-	output: "raw/{sample}.trimmed.fastq"
+	output: "raw/{sample}.trimmed.fastq.gz"
 	threads: 1
 	shell: "cutadapt -m 16 -b GGCCAAGGCG -o {output} {input}"
+
 	
 rule map:
-	input:  "raw/{sample}.trimmed.fastq"
+	input:  "raw/{sample}.trimmed.fastq.gz"
 	output: "mapped/{sample}.sam"
 	threads: 24
 	shell:
@@ -71,7 +73,7 @@ rule sortbam:
 
 #samplefile.rnaseqc.txt was made by hand so sue me
 rule rnaseqc:
-	input: "samplefile.rnaseqc.txt"
+	input: "samplefile.rnaseqc.txt", MAPPED
 	output: "rnaseqc/index.html"
 	shell: "java -jar tools/RNA-SeQC_v1.1.7.jar -o rnaseqc -r {FASTAREF} -s samplefile.rnaseqc.txt -t {GTFFILE}"
 	
