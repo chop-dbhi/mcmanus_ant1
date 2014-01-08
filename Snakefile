@@ -68,7 +68,7 @@ rule samtobam:
 rule sortbam:
 	input: "{sample}.bam"
 	output: bam="{sample}.sorted.bam", bai="{sample}.sorted.bam.bai"
-	threads: 1
+	threads: 24
 	shell: "{SORT} -t /nas/is1/tmp -s -i -o {output.bam} {input}"
 
 #samplefile.rnaseqc.txt was made by hand so sue me

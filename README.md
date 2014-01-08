@@ -4,7 +4,7 @@ martin-ant1-rnaseq
 rna-seq analysis for Martin Picard
 
 References from iGenomes:
-ftp://igenome:G3nom3s4u@ussd-ftp.illumina.com/Mus_musculus/UCSC/mm10/Mus_musculus_UCSC_mm10.tar.gz
+<ftp://igenome:G3nom3s4u@ussd-ftp.illumina.com/Mus_musculus/UCSC/mm10/Mus_musculus_UCSC_mm10.tar.gz>
 
 ###Requires###
 - Python-3.3 (for Snakemake)
