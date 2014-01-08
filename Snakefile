@@ -3,7 +3,8 @@ FASTADIR = "/nas/is1/rnaseq_workspace/refs/mm38/fasta/"
 FASTAREF = glob.glob(FASTADIR+"*fa")
 STARREFDIR = "/nas/is1/rnaseq_workspace/refs/mm38/star/"
 CHRNAME = STARREFDIR+"chrName.txt"
-GTFFILE= "/nas/is1/rnaseq_workspace/refs/mm38/genes/genes.gtf"
+GTFFILE= "refs/Mus_musculus/Ensembl/GRCm38/Annotation/Genes/genes.gtf"
+MASKFILE = "refs/Mus_musculus/Ensembl/GRCm38/Annotation/mask.gtf""
 TOOLDIR="/home/leipzig/leipzig/martin/snake-env/tools"
 STAR = TOOLDIR+"/STAR_2.3.0e.Linux_x86_64/STAR"
 SAMTOOLS = TOOLDIR+"/samtools/samtools"
@@ -78,8 +79,8 @@ rule rnaseqc:
 	shell: "java -jar tools/RNA-SeQC_v1.1.7.jar -o rnaseqc -r {FASTAREF} -s samplefile.rnaseqc.txt -t {GTFFILE}"
 	
 rule mask:
-	output: "refs/Mus_musculus/Ensembl/GRCm38/Annotation/mask.gtf"
-	shell: "grep -P 'rRNA|tRNA|MT\t' refs/Mus_musculus/Ensembl/GRCm38/Annotation/Genes/genes.gtf > refs/Mus_musculus/Ensembl/GRCm38/Annotation/mask.gtf"
+	output: MASKFILE
+	shell: "grep -P 'rRNA|tRNA|MT\t' {GTFFILE} > {MASKFILE}"
 
 rule cufflinks:
 	input: "mapped/{sample}.sorted.bam"
@@ -87,7 +88,7 @@ rule cufflinks:
 	threads: 8
 	shell: """
 	       mkdir -p cufflinks/{wildcards.sample}
-	       {CUFF} -p 8 -g {GTFFILE} -M refs/Mus_musculus/Ensembl/GRCm38/Annotation/mask.gtf --multi-read-correct --outFilterIntronMotifs RemoveNoncanonical --output-dir cufflinks/{wildcards.sample} {input}
+	       {CUFF} -p 8 -g {GTFFILE} -M {MASKFILE} --multi-read-correct --outFilterIntronMotifs RemoveNoncanonical --output-dir cufflinks/{wildcards.sample} {input}
 	       """
 #-library-type=fr-secondstrand unclear if this is appropriate
 #http://seqanswers.com/forums/showthread.php?t=9418 
