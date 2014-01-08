@@ -27,19 +27,12 @@ HEART_WT = "raw/IonXpressRNA_009.R_2013_12_19_16_11_21_user_1PR-13-RNA-Seq_whole
 
 SAMPLES = MUSCLE_KO + MUSCLE_WT + HEART_KO + HEART_WT
 
-SAMPLE_ROOTS = [s.replace('raw/', '') for s in [f.replace('.fastq', '') for f in SAMPLES]]
 MAPPED = [s.replace('raw', 'mapped') for s in [f.replace('fastq', 'sorted.bam.bai') for f in SAMPLES]]
-
+SAMPLE_ROOTS = [s.replace('raw/', '') for s in [f.replace('.fastq', '') for f in SAMPLES]]
 CUFFED = ['cufflinks/'+f+'/transcripts.gtf' for f in SAMPLE_ROOTS]
 
 rule all:
 	input: "/nas/is1/rnaseq_workspace/refs/mm38/star/chrName.txt", MAPPED, CUFFED
-
-#ftp://igenome:G3nom3s4u@ussd-ftp.illumina.com/Mus_musculus/UCSC/mm10/Mus_musculus_UCSC_mm10.tar.gz;"
-
-# input: "{dataset}/inputfile"
-# output: "{dataset}/file.{group}.txt"
-# shell: "somecommand --group {wildcards.group}  < {input}  > {output}"
 
 rule starindex:
 	input: FASTAREF
@@ -69,13 +62,14 @@ rule samtobam:
 	threads: 1
 	shell:  "{SAMTOOLS} view -bS {input} > {output}"
 
+#novosort can index
 rule sortbam:
 	input: "{sample}.bam"
-	output: "{sample}.sorted.bam", "{sample}.sorted.bam.bai"
+	output: bam="{sample}.sorted.bam", bai="{sample}.sorted.bam.bai"
 	threads: 1
-	shell: "{SORT} -t /nas/is1/tmp -s -i -o {output} {input}"
+	shell: "{SORT} -t /nas/is1/tmp -s -i -o {output.bam} {input}"
 
-#samplefile.rnaseqc.txt was made by hand
+#samplefile.rnaseqc.txt was made by hand so sue me
 rule rnaseqc:
 	input: "samplefile.rnaseqc.txt"
 	output: "rnaseqc/index.html"
@@ -85,7 +79,6 @@ rule mask:
 	output: "refs/Mus_musculus/Ensembl/GRCm38/Annotation/mask.gtf"
 	shell: "grep -P 'rRNA|tRNA|MT\t' refs/Mus_musculus/Ensembl/GRCm38/Annotation/Genes/genes.gtf > refs/Mus_musculus/Ensembl/GRCm38/Annotation/mask.gtf"
 
-#http://seqanswers.com/forums/showthread.php?t=9418
 rule cufflinks:
 	input: "mapped/{sample}.sorted.bam"
 	output: "cufflinks/{sample}/transcripts.gtf","cufflinks/{sample}/isoforms.fpkm_tracking","cufflinks/{sample}/genes.fpkm_tracking"
@@ -94,5 +87,6 @@ rule cufflinks:
 	       mkdir -p cufflinks/{wildcards.sample}
 	       {CUFF} -p 8 -g {GTFFILE} -M refs/Mus_musculus/Ensembl/GRCm38/Annotation/mask.gtf --multi-read-correct --outFilterIntronMotifs RemoveNoncanonical --output-dir cufflinks/{wildcards.sample} {input}
 	       """
-#-library-type=fr-secondstrand
-
+#-library-type=fr-secondstrand unclear if this is appropriate
+#http://seqanswers.com/forums/showthread.php?t=9418 
+#http://ioncommunity.lifetechnologies.com/docs/DOC-7062

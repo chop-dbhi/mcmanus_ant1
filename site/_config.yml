@@ -1,0 +1,8 @@
+layout: narrow
+markdown: redcarpet
+pygments: true
+name: ERR ChIP-Seq
+baseurl : http://mybic.chop.edu/clients/wallace/err_binding/
+uploaddir : http://mitomap.org/TRACKS
+ucsc : 
+mirror : 
