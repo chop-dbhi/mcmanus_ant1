@@ -8,6 +8,9 @@ References from iGenomes:
 or
 <ftp://ussd-ftp.illumina.com/Mus_musculus/Ensembl/GRCm38/Mus_musculus_Ensembl_GRCm38.tar.gz>
 
+Transcript fasta:
+<ftp://ftp.ensembl.org/pub/release-74/fasta/mus_musculus/cdna/Mus_musculus.GRCm38.74.cdna.all.fa.gz>
+
 ###Requires###
 - Python-3.3 (for Snakemake)
 - Snakemake-2.4.9

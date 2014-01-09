@@ -1,10 +1,11 @@
 import glob
-ROOT =          "/home/leipzig/leipzig/martin/snake-env/"
-FASTAREF =      ROOT+"refs/Mus_musculus/Ensembl/GRCm38/Sequence/WholeGenomeFasta/genome.fa"
-STARREFDIR =    "/nas/is1/rnaseq_workspace/refs/mm38/star/"
+ROOT =          "/nas/is1/leipzig/martin/snake-env/"
+REFDIR = 	ROOT+"refs/Mus_musculus/Ensembl/GRCm38/"
+FASTAREF =      REFDIR+"Sequence/WholeGenomeFasta/genome.fa"
+STARREFDIR =    REFDIR+"star"
 CHRNAME =       STARREFDIR+"chrName.txt"
-GTFFILE =       ROOT+"refs/Mus_musculus/Ensembl/GRCm38/Annotation/Genes/genes.gtf"
-MASKFILE =      ROOT+"refs/Mus_musculus/Ensembl/GRCm38/Annotation/mask.gtf"
+GTFFILE =       REFDIR+"Annotation/Genes/genes.gtf"
+MASKFILE =      REFDIR+"Annotation/mask.gtf"
 TOOLDIR=        ROOT+"tools"
 STAR =          TOOLDIR+"/STAR_2.3.0e.Linux_x86_64/STAR"
 SAMTOOLS =      TOOLDIR+"/samtools/samtools"
@@ -29,15 +30,25 @@ HEART_KO = "IonXpressRNA_010.R_2013_12_19_16_11_21_user_1PR-13-RNA-Seq_whole_tra
 HEART_WT = "IonXpressRNA_009.R_2013_12_19_16_11_21_user_1PR-13-RNA-Seq_whole_transcriptome IonXpressRNA_011.R_2013_12_18_20_25_40_user_1PR-12-RNA-Seq_whole_transcriptome  IonXpressRNA_013.R_2013_12_20_12_50_23_user_1PR-14-RNA-Seq_whole_transcriptome  IonXpressRNA_015.R_2013_12_21_20_34_59_user_1PR-15-RNA-Seq_whole_transcriptome".split()
 
 SAMPLES = MUSCLE_KO + MUSCLE_WT + HEART_KO + HEART_WT
-
-MAPPED = [ROOT+'mapped/'+f+'.sorted.bam' for f in SAMPLES]
-COUNTS = [ROOT+'counts/'+f+'.tsv' for f in SAMPLES]
-CUFFED = [ROOT+'cufflinks/'+f+'/transcripts.gtf' for f in SAMPLES]
+SEQ_DIR = ROOT+"raw/"
+MAPPED_DIR = ROOT+"mapped/"
+COUNTS_DIR = ROOT+"counts/"
+CUFF_DIR = ROOT+"cufflinks/"
+DIRS = MAPPED_DIR+COUNTS_DIR+CUFF_DIR
+MAPPED = [MAPPED_DIR+f+'.sorted.bam' for f in SAMPLES]
+COUNTS = [COUNTS_DIR+f+'.tsv' for f in SAMPLES]
+CUFFED = [CUFF_DIR+f+'/transcripts.gtf' for f in SAMPLES]
 
 SAMPLEFILE = ROOT+"samplefile.rnaseqc.txt"
+RNASEQC_DIR = ROOT+"rnaseqc/"
+RNASEQC_SENT = RNASEQC_DIR+"index.html"
 
 rule all:
-	input: STARREFDIR+"chrName.txt", MAPPED, CUFFED, COUNTS, ROOT+"rnaseqc/index.html"
+	input: DIRS, CHRNAME, MAPPED, CUFFED, COUNTS, RNASEQC_SENT
+
+rule dirs:
+	output: DIRS
+	shell: "mkdir -p "+' '.join(DIRS)
 
 rule counts:
 	input: COUNTS
@@ -55,8 +66,8 @@ rule trim:
 	shell: "{CUTADAPT} -m 16 -b GGCCAAGGCG -o {output} {input}"
 
 rule map:
-	input:  ROOT+"raw/{sample}.trimmed.fastq.gz"
-	output: ROOT+"mapped/{sample}.sam"
+	input:  "raw/{sample}.trimmed.fastq.gz"
+	output: "mapped/{sample}.sam"
 	threads: 24
 	shell:
 		"""
@@ -81,25 +92,25 @@ rule sortbam:
 #samplefile.rnaseqc.txt was made by hand so sue me
 rule rnaseqc:
 	input: SAMPLEFILE, MAPPED
-	output: ROOT+"rnaseqc/index.html"
-	shell: "java -jar {RNASEQC} -o rnaseqc -r {FASTAREF} -s samplefile.rnaseqc.txt -t {GTFFILE}"
+	output: RNASEQC_SENT
+	shell: "java -jar {RNASEQC} -o RNASEQC_DIR -r {FASTAREF} -s {SAMPLEFILE} -t {GTFFILE}"
 
 rule mask:
 	output: MASKFILE
 	shell: "grep -P 'rRNA|tRNA|MT\t' {GTFFILE} > {MASKFILE}"
 
 rule cufflinks:
-	input: ROOT+"mapped/{sample}.sorted.bam"
-	output: ROOT+"cufflinks/{sample}/transcripts.gtf",ROOT+"cufflinks/{sample}/isoforms.fpkm_tracking",ROOT+"cufflinks/{sample}/genes.fpkm_tracking"
+	input: "mapped/{sample}.sorted.bam"
+	output: gtf="cufflinks/{sample}/transcripts.gtf",iso="cufflinks/{sample}/isoforms.fpkm_tracking",genes="cufflinks/{sample}/genes.fpkm_tracking"
 	threads: 8
 	shell: """
-	       mkdir -p {ROOT}cufflinks/{wildcards.sample}
-	       {CUFF} -p 8 -g {GTFFILE} -M {MASKFILE} --max-bundle-length 8000000 --multi-read-correct --library-type=fr-secondstrand --output-dir {ROOT}cufflinks/{wildcards.sample} {input}
+	       mkdir -p {CUFF_DIR}{wildcards.sample}
+	       {CUFF} -p 8 -g {GTFFILE} -M {MASKFILE} --max-bundle-length 8000000 --multi-read-correct --library-type=fr-secondstrand --output-dir {CUFF_DIR}{wildcards.sample} {input}
 	       """
 
 rule htseq:
-	input: ROOT+"mapped/{sample}.sorted.bam"
-	output: id=ROOT+"counts/{sample}.tsv"
+	input: "mapped/{sample}.sorted.bam"
+	output: id="counts/{sample}.tsv"
 	threads: 1
 	shell:
 			"""
