@@ -29,6 +29,8 @@ cd snake-env
 snakemake -j 24
 ```
 
-###To run on variome usign PBS###
+###To run on variome using PBS###
+```
 source /nas/is1/leipzig/martin/variome-env/bin/activate
 snakemake --directory /nas/is1/leipzig/martin/snake-env --snakefile /nas/is1/leipzig/martin/snake-env/Snakefile  -c qsub -j 16
+````
