@@ -21,10 +21,14 @@ Transcript fasta:
 - express-1.5.1
 - RNA-SeQC_v1.1.7
 
-###To run###
+###To run on raboso###
 ```
 /usr/local/bin/virtualenv-3.3 snake-env
 cd snake-env
 . bin/activate
 snakemake -j 24
 ```
+
+###To run on variome usign PBS###
+source /nas/is1/leipzig/martin/variome-env/bin/activate
+snakemake --directory /nas/is1/leipzig/martin/snake-env --snakefile /nas/is1/leipzig/martin/snake-env/Snakefile  -c qsub -j 16
