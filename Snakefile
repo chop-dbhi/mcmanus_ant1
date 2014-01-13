@@ -42,7 +42,7 @@ COUNTS_DIR = ROOT+"counts/"
 CUFF_DIR = ROOT+"cufflinks/"
 DIRS = [MAPPED_DIR,COUNTS_DIR,CUFF_DIR]
 MAPPED = [MAPPED_DIR+f+'.sorted.bam' for f in SAMPLES]
-GATKED = [MAPPED_DIR+f+'.sorted.gatk.bam' for f in SAMPLES]
+GATKED = [MAPPED_DIR+f+'.sorted.gatk.bam.bai' for f in SAMPLES]
 COUNTS = [COUNTS_DIR+f+'.tsv' for f in SAMPLES]
 CUFFED = [CUFF_DIR+f+'/transcripts.gtf' for f in SAMPLES]
 EXPRED = ['express/'+f for f in SAMPLES]
@@ -56,7 +56,7 @@ rule all:
 
 rule logs:
 	input: LOGS
-	
+
 rule expr:
 	input: EXPRED
 
@@ -125,6 +125,8 @@ rule samtobam:
 	threads: 1
 	shell:  "{SAMTOOLS} view -bS {input} > {output}"
 
+
+	
 #novosort can index
 rule sortbam:
 	input: "{sample}.bam"
@@ -137,6 +139,11 @@ rule AddOrReplaceReadGroups:
 	output: "{sample}.sorted.gatk.bam"
 	shell: "java -jar {TOOLDIR}/picard-tools-1.106/AddOrReplaceReadGroups.jar INPUT= {input} OUTPUT= {output} RGID= {wildcards.sample} LB= {wildcards.sample} RGPL= ionproton RGPU= martin RGSM= {wildcards.sample}"
 	
+rule index:
+	input: "{sample}.sorted.gatk.bam"
+	output: "{sample}.sorted.gatk.bam.bai"
+	shell: "java -jar {TOOLDIR}/picard-tools-1.106/BuildBamIndex.jar INPUT= {input} OUTPUT= {output}"
+		
 #samplefile.rnaseqc.txt was made by hand so sue me
 rule rnaseqc:
 	input: SAMPLEFILE, GATKED
