@@ -1,19 +1,21 @@
 import glob
 from snakemake.utils import R
-
+import re
 ROOT =          "/nas/is1/leipzig/martin/snake-env/"
 REFDIR = 	ROOT+"refs/Mus_musculus/Ensembl/GRCm38/"
 FASTAREF =      REFDIR+"Sequence/WholeGenomeFasta/genome.fa"
-STARREFDIR =    REFDIR+"star"
+STARREFDIR =    REFDIR+"star/"
 CHRNAME =       STARREFDIR+"chrName.txt"
 GTFFILE =       REFDIR+"Annotation/Genes/genes.gtf"
+PRIM_GTF =      REFDIR+"Annotation/Genes/primary_genes.gtf"
 MASKFILE =      REFDIR+"Annotation/mask.gtf"
+RRNA =          REFDIR+"Annotation/rRNA.list"
 TOOLDIR=        ROOT+"tools"
 STAR =          TOOLDIR+"/STAR_2.3.0e.Linux_x86_64/STAR"
 SAMTOOLS =      TOOLDIR+"/samtools/samtools"
 CUTADAPT =      "/nas/is1/bin/cutadapt"
 NOVO =          "/nas/is1/bin/Novoalign/3.00.02/novocraft"
-RNASEQC =       TOOLDIR+"/tools/RNA-SeQC_v1.1.7.jar"
+RNASEQC =       TOOLDIR+"/RNA-SeQC_v1.1.7.jar"
 ALIGN =         NOVO+"/novoalign"
 INDEX =         NOVO+"/novoindex"
 SORT =          NOVO+"/novosort"
@@ -38,19 +40,23 @@ SEQ_DIR = ROOT+"raw/"
 MAPPED_DIR = ROOT+"mapped/"
 COUNTS_DIR = ROOT+"counts/"
 CUFF_DIR = ROOT+"cufflinks/"
-DIRS = MAPPED_DIR+COUNTS_DIR+CUFF_DIR
+DIRS = [MAPPED_DIR,COUNTS_DIR,CUFF_DIR]
 MAPPED = [MAPPED_DIR+f+'.sorted.bam' for f in SAMPLES]
+GATKED = [MAPPED_DIR+f+'.sorted.gatk.bam' for f in SAMPLES]
 COUNTS = [COUNTS_DIR+f+'.tsv' for f in SAMPLES]
 CUFFED = [CUFF_DIR+f+'/transcripts.gtf' for f in SAMPLES]
 EXPRED = ['express/'+f for f in SAMPLES]
-
+LOGS = 'starlogs.parsed.txt'
 SAMPLEFILE = ROOT+"samplefile.rnaseqc.txt"
 RNASEQC_DIR = ROOT+"rnaseqc/"
 RNASEQC_SENT = RNASEQC_DIR+"index.html"
 
 rule all:
-	input: DIRS, CHRNAME, MAPPED, CUFFED, COUNTS, RNASEQC_SENT, EXPR
+	input: DIRS, CHRNAME, MAPPED, CUFFED, COUNTS, GATKED, RNASEQC_SENT, LOGS
 
+rule logs:
+	input: LOGS
+	
 rule expr:
 	input: EXPRED
 
@@ -60,7 +66,10 @@ rule dirs:
 
 rule counts:
 	input: COUNTS
-	
+
+rule gatked:
+	input: GATKED
+
 rule starindex:
 	input: FASTAREF
 	output: CHRNAME
@@ -85,24 +94,34 @@ rule map:
 		"""
 
 rule parselogs:
-	input: "starlogs/{sample}_Log.final.out"
-	output: "starlogs/{sample}.parsed.txt"
+	input: expand('starlogs/{sample}_Log.final.out', sample=SAMPLES)
+	output: "starlogs.parsed.txt"
 	run:
-		input_reads_p = re.compile('Number of input reads |\s+(.*)')
-		unique_reads_p = re.compile('Uniquely mapped reads % |\s+(.*)')
-		multiple_hits_p = re.compile('% of reads mapped to multiple loci |\s+(.*)')
-		with open({input}, 'rb') as s:
-			if input_reads_p.search(s):
-				input_reads=input_reads.search(s).group(1)
-			elif unique_reads_p.search(s):
-				unique_reads=unique_reads_p.search(s).group(1)
-			elif multiple_hits_p.search(s):
-				multiple_hits=multiple_hits_p.search(s).group(1)
-		print '{0}\t{1}\t{2}\t{3}'.format({sample},input_reads,unique_reads,multiple_hits)
+		filename_p = re.compile('starlogs\/(\S+)_Log.final.out')
+		input_reads_p = re.compile('Number of input reads\s+\|\s+(.*)')
+		unique_reads_p = re.compile('Uniquely mapped reads %\s+\|\s+(.*)')
+		multiple_hits_p = re.compile('% of reads mapped to multiple loci\s+\|\s+(.*)')
+		input_reads=''
+		unique_reads=''
+		multiple_hits=''
+		with open(output[0], 'w') as outfile:
+			outfile.write('sample\tNumber of input reads\tUniquely mapped reads %\t% of reads mapped to multiple loci\n')
+			for samplefilename in input:
+				sample=filename_p.search(samplefilename).group(1)
+				with open(samplefilename, 'r') as file:
+				 
+					for line in file:
+						if input_reads_p.search(line):
+							input_reads=input_reads_p.search(line).group(1)
+						elif unique_reads_p.search(line):
+							unique_reads=unique_reads_p.search(line).group(1)
+						elif multiple_hits_p.search(line):
+							multiple_hits=multiple_hits_p.search(line).group(1)
+				outfile.write('{0}\t{1}\t{2}\t{3}\n'.format(sample,input_reads,unique_reads,multiple_hits))
 		
 rule samtobam:
 	input:  "{sample}.sam"
-	output: "{sample}.bam"
+	output: temp("{sample}.bam")
 	threads: 1
 	shell:  "{SAMTOOLS} view -bS {input} > {output}"
 
@@ -113,11 +132,16 @@ rule sortbam:
 	threads: 24
 	shell: "{SORT} -t /nas/is1/tmp -s -i -o {output.bam} {input}"
 
+rule AddOrReplaceReadGroups:
+	input: "{sample}.sorted.bam"
+	output: "{sample}.sorted.gatk.bam"
+	shell: "java -jar {TOOLDIR}/picard-tools-1.106/AddOrReplaceReadGroups.jar INPUT= {input} OUTPUT= {output} RGID= {wildcards.sample} LB= {wildcards.sample} RGPL= ionproton RGPU= martin RGSM= {wildcards.sample}"
+	
 #samplefile.rnaseqc.txt was made by hand so sue me
 rule rnaseqc:
-	input: SAMPLEFILE, MAPPED
+	input: SAMPLEFILE, GATKED
 	output: RNASEQC_SENT
-	shell: "java -jar {RNASEQC} -o RNASEQC_DIR -r {FASTAREF} -s {SAMPLEFILE} -t {GTFFILE}"
+	shell: "java -jar {RNASEQC} -o RNASEQC_DIR -r {FASTAREF} -s {SAMPLEFILE} -t {PRIM_GTF} -rRNA {RRNA}"
 
 rule mask:
 	output: MASKFILE
@@ -172,3 +196,6 @@ from snakemake.utils import R
 #-library-type=fr-secondstrand unclear if this is appropriate
 #http://seqanswers.com/forums/showthread.php?t=9418 
 #http://ioncommunity.lifetechnologies.com/docs/DOC-7062
+
+#java -jar picard-tools-1.106/CreateSequenceDictionary.jar REFERENCE= ../refs/Mus_musculus/Ensembl/GRCm38/Sequence/WholeGenomeFasta/genome.fa OUTPUT= ../refs/Mus_musculus/Ensembl/GRCm38/Sequence/WholeGenomeFasta/genome.dict
+#perl -ne 'm/^([0-9]+|MT|X|Y)/ && print' /nas/is1/leipzig/martin/snake-env/refs/Mus_musculus/Ensembl/GRCm38/Annotation/Genes/genes.gtf > /nas/is1/leipzig/martin/snake-env/refs/Mus_musculus/Ensembl/GRCm38/Annotation/Genes/primary_genes.gtf
