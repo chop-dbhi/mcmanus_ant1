@@ -261,11 +261,11 @@ layout: wide
 		
 #### RNA-SeQC Output
 [RNA-SeQC](http://bioinformatics.oxfordjournals.org/content/28/11/1530.long) produces extensive metrics for RNA-Seq runs. Not all of the sections will apply to the Ion Proton protocol.
-Most interesting might be the rRNA rate in the multisample [summary document](RNASEQC_DIR/countMetrics.html)
+Most interesting might be the rRNA rate in the multisample [summary document](RNASEQC_DIR/countMetrics.html).
 > [RNA-SeQC reports](RNASEQC_DIR)
 
-### Differential expression analysis
-> [diff_exp.pdf](diff_exp.pdf)
+### Differential expression analysis report and significantly DE gene tables
+> [diffExp.pdf](diffExp.pdf)
 
 > [muscleResults.csv](muscleResults.csv)
 
@@ -275,22 +275,25 @@ Most interesting might be the rRNA rate in the multisample [summary document](RN
 Go to [http://genome.ucsc.edu/cgi-bin/hgCustom](http://genome.ucsc.edu/cgi-bin/hgCustom) and copy-paste one or more of these into the URL field.
 """)
 			for c, b, p in zip(COLORS, BIGWIGS, PRETTY_NAMES):
-				outfile.write("> ```track type=bigWig name={0} smoothingWindow=4 color={1} autoScale=on viewLimits=1:200 visibility=full windowingFunction=maximum bigDataUrl={{{{ site.baseurl }}}}/{2}```\n".format(p,c,b))
-
+				outfile.write("> ```track type=bigWig name={0} smoothingWindow=4 color={1} autoScale=on viewLimits=1:200 visibility=full windowingFunction=maximum bigDataUrl={{{{ site.baseurl }}}}/{2}```\n\n".format(p,c,b))
+			outfile.write("""
+#### Code repository
+Code used to generate this analysis is located here [http://github.research.chop.edu/BiG/martin-ant1-rnaseq](http://github.research.chop.edu/BiG/martin-ant1-rnaseq). Feel free to reuse.
+""")
 
 rule publishsite:
 	input: "site/index.md"
 	shell:
 		"""
 		jekyll build --config site/_config.yml --source site --destination site/_site
-		rsync -av --update --rsh=ssh -r site/_site/* {MITOMAP}
+		rsync -v --update --rsh=ssh -r site/_site/* {MITOMAP}
 		"""
 
 rule publishdata:
 	input: BIGWIGS, QCED, "diffExp.pdf"
 	shell:
 		"""
-		rsync -av --update --rsh=ssh -r diffExp.pdf fastqc tracks RNASEQC_DIR {MITOMAP}
+		rsync -v --update --rsh=ssh -r diffExp.pdf muscleResults.csv heartResults.csv fastqc tracks RNASEQC_DIR {MITOMAP}
 		"""
 
 rule report:

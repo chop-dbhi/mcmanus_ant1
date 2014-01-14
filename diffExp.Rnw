@@ -291,12 +291,12 @@ heatmap( as.matrix( dists ))
 The R session information (including the OS info, R version and all
 packages used):
 
-<<session-info,echo=FALSE,results='verbatim'>>=
+<<session-info,echo=FALSE,results=verbatim>>=
 sessionInfo()
 Sys.time()
 @
 
-<<git,echo=FALSE,results='hide'>>=
+<<git,echo=FALSE,results=hide>>=
 commit<-system("git rev-parse --verify HEAD",intern=TRUE)
 @
 \rfoot{$ \Sexpr{commit} $}
