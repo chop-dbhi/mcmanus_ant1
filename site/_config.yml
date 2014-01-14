@@ -1,8 +1,8 @@
 layout: narrow
 markdown: redcarpet
 pygments: true
-name: ERR ChIP-Seq
-baseurl : http://mybic.chop.edu/clients/wallace/err_binding/
-uploaddir : http://mitomap.org/TRACKS
+name: Martin ANT1 RNA-Seq
+baseurl : http://mitomap.org/martin-rna-seq/
+uploaddir : http://mitomap.org/martin-rna-seq/tracks
 ucsc : 
 mirror : 

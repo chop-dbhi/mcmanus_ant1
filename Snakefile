@@ -2,19 +2,21 @@ import glob
 from snakemake.utils import R
 import re
 ROOT =          "/nas/is1/leipzig/martin/snake-env/"
-REFDIR = 	ROOT+"refs/Mus_musculus/Ensembl/GRCm38/"
+MITOMAP =       "leipzigj@rescommap01.research.chop.edu:/var/www/html/martin-rna-seq/"
+REFDIR =        ROOT+"refs/Mus_musculus/Ensembl/GRCm38/"
 FASTAREF =      REFDIR+"Sequence/WholeGenomeFasta/genome.fa"
 STARREFDIR =    REFDIR+"star/"
 CHRNAME =       STARREFDIR+"chrName.txt"
 GTFFILE =       REFDIR+"Annotation/Genes/genes.gtf"
 PRIM_GTF =      REFDIR+"Annotation/Genes/primary_genes.gtf"
 MASKFILE =      REFDIR+"Annotation/mask.gtf"
-RRNA =          REFDIR+"Annotation/rRNA.list"
+RRNA =          "mm10_rRNA.list"
 TOOLDIR=        ROOT+"tools"
 STAR =          TOOLDIR+"/STAR_2.3.0e.Linux_x86_64/STAR"
 SAMTOOLS =      TOOLDIR+"/samtools/samtools"
 CUTADAPT =      "/nas/is1/bin/cutadapt"
 NOVO =          "/nas/is1/bin/Novoalign/3.00.02/novocraft"
+BEDTOOLS =      "/nas/is1/bin/BEDTools/2.16.2"
 RNASEQC =       TOOLDIR+"/RNA-SeQC_v1.1.7.jar"
 ALIGN =         NOVO+"/novoalign"
 INDEX =         NOVO+"/novoindex"
@@ -34,7 +36,28 @@ HEART_KO = "IonXpressRNA_010.R_2013_12_19_16_11_21_user_1PR-13-RNA-Seq_whole_tra
 #B6ME odds
 HEART_WT = "IonXpressRNA_009.R_2013_12_19_16_11_21_user_1PR-13-RNA-Seq_whole_transcriptome IonXpressRNA_011.R_2013_12_18_20_25_40_user_1PR-12-RNA-Seq_whole_transcriptome  IonXpressRNA_013.R_2013_12_20_12_50_23_user_1PR-14-RNA-Seq_whole_transcriptome  IonXpressRNA_015.R_2013_12_21_20_34_59_user_1PR-15-RNA-Seq_whole_transcriptome"
 
+COLORS = """
+141,211,199
+255,255,179
+190,186,218
+251,128,114
+128,177,211
+253,180,98
+179,222,105
+252,205,229
+217,217,217
+188,128,189
+204,235,197
+255,237,111
+190,174,212
+253,192,134
+56,108,176
+191,91,23
+""".split()
+
+GROUP_NAMES = 'MUSCLE_KO MUSCLE_WT HEART_KO HEART_WT'.split()
 SAMPLES = ' '.join([MUSCLE_KO,MUSCLE_WT,HEART_KO,HEART_WT]).split()
+PRETTY_NAMES = ['{0}_{1}'.format(sample,i)  for sample in GROUP_NAMES for i in range(1, 5)]
 
 SEQ_DIR = ROOT+"raw/"
 MAPPED_DIR = ROOT+"mapped/"
@@ -48,8 +71,10 @@ CUFFED = [CUFF_DIR+f+'/transcripts.gtf' for f in SAMPLES]
 EXPRED = ['express/'+f for f in SAMPLES]
 LOGS = 'starlogs.parsed.txt'
 SAMPLEFILE = ROOT+"samplefile.rnaseqc.txt"
-RNASEQC_DIR = ROOT+"rnaseqc/"
+RNASEQC_DIR = ROOT+"RNASEQC_DIR/"
 RNASEQC_SENT = RNASEQC_DIR+"index.html"
+BIGWIGS = ['tracks/'+f+'.bw' for f in SAMPLES]
+QCED = ['fastqc/'+f+'.trimmed_fastqc.zip' for f in SAMPLES]
 
 rule all:
 	input: DIRS, CHRNAME, MAPPED, CUFFED, COUNTS, GATKED, RNASEQC_SENT, LOGS
@@ -75,12 +100,23 @@ rule starindex:
 	output: CHRNAME
 	shell: "{STAR} --limitGenomeGenerateRAM 54760833024 --runMode genomeGenerate --genomeDir {STARREFDIR} --genomeFastaFiles {input}"
 
+rule bw:
+	input: BIGWIGS
+
+rule qcit:
+	input: QCED
+
 #cutadapt will auto-gz if .gz is in the output name
 rule trim:
 	input: "{sample}.fastq"
 	output: "{sample}.trimmed.fastq.gz"
 	threads: 1
 	shell: "{CUTADAPT} -m 16 -b GGCCAAGGCG -o {output} {input}"
+
+rule qc:
+	input: "raw/{sample}.trimmed.fastq.gz"
+	output: "fastqc/{sample}.trimmed_fastqc.zip"
+	shell: "{TOOLDIR}/FastQC/fastqc -o fastqc {input}"
 
 rule map:
 	input:  "raw/{sample}.trimmed.fastq.gz"
@@ -148,7 +184,7 @@ rule index:
 rule rnaseqc:
 	input: SAMPLEFILE, GATKED
 	output: RNASEQC_SENT
-	shell: "java -jar {RNASEQC} -o RNASEQC_DIR -r {FASTAREF} -s {SAMPLEFILE} -t {PRIM_GTF} -rRNA {RRNA}"
+	shell: "java -jar {RNASEQC} -o {RNASEQC_DIR} -r {FASTAREF} -s {SAMPLEFILE} -t {PRIM_GTF} -rRNA {RRNA}"
 
 rule mask:
 	output: MASKFILE
@@ -185,6 +221,77 @@ rule htseq:
 			{SAMTOOLS} view -h {input} | htseq-count --mode intersection-strict --stranded no --minaqual 1 --type exon --idattr gene_id - {GTFFILE} > {output.id}
 			"""
 
+rule bamtobdg:
+	input: "mapped/{sample}.sorted.bam"
+	output: "mapped/{sample}.bdg"
+	shell: "{BEDTOOLS}/bedtools genomecov -ibam {input} -g {FASTAREF} -bg > {output}"
+
+rule chrify:
+	input: "{sample}.bdg"
+	output: "{sample}.bdg.chr"
+	shell:
+			"""
+			sed -e 's/^/chr/' {input} > {output}
+			"""
+
+rule bigwig:
+	input: "mapped/{sample}.bdg.chr"
+	output: "tracks/{sample}.bw"
+	shell:
+			"""
+			{TOOLDIR}/bedGraphToBigWig {input} mm10.len {output}
+			"""
+
+#, "diffExp.pdf", QCED, RNASEQC_SENT
+rule siteindex:
+	input: BIGWIGS
+	output: "site/index.md"
+	run:
+		with open(output[0], 'w') as outfile:
+			outfile.write("""---
+layout: wide
+---
+### Quality Control
+#### FastQC Output
+[FastQC] is quality control tool that can point to certain biases that represent contamination. Be aware, the report may reflect inherent biases in the RNA-Seq experiment.
+""")
+			for s,p in zip(SAMPLES,PRETTY_NAMES):
+				outfile.write("> [`{0}`]({{{{ site.baseurl }}}}/fastqc/{1}.trimmed_fastqc/fastqc_report.html)\n\n".format(p,s))
+			outfile.write("""
+		
+#### RNA-SeQC Output
+[RNA-SeQC](http://bioinformatics.oxfordjournals.org/content/28/11/1530.long) produces extensive metrics for RNA-Seq runs. Not all of the sections will apply to the Ion Proton protocol.
+Most interesting might be the rRNA rate in the multisample [summary document](RNASEQC_DIR/countMetrics.html)
+> [RNA-SeQC reports](RNASEQC_DIR)
+
+### Differential expression analysis
+> [diff_exp.pdf](diff_exp.pdf)
+
+> [muscleResults.csv](muscleResults.csv)
+
+> [heartResults.csv](heartResults.csv)
+
+### Using BigWig Tracks in UCSC Genome Browser
+Go to [http://genome.ucsc.edu/cgi-bin/hgCustom](http://genome.ucsc.edu/cgi-bin/hgCustom) and copy-paste one or more of these into the URL field.
+""")
+			for c, b, p in zip(COLORS, BIGWIGS, PRETTY_NAMES):
+				outfile.write("> ```track type=bigWig name={0} smoothingWindow=4 color={1} autoScale=on viewLimits=1:200 visibility=full windowingFunction=maximum bigDataUrl={{{{ site.baseurl }}}}/{2}```\n".format(p,c,b))
+
+
+rule publishsite:
+	input: "site/index.md"
+	shell:
+		"""
+		jekyll build --config site/_config.yml --source site --destination site/_site
+		rsync -av --update --rsh=ssh -r site/_site/* {MITOMAP}
+		"""
+
+rule publishdata:
+	input: BIGWIGS, QCED, "diffExp.pdf"
+	shell:
+		"""
+		rsync -av --update --rsh=ssh -r diffExp.pdf fastqc tracks RNASEQC_DIR {MITOMAP}
+		"""
 
 rule report:
 	input: COUNTS
@@ -197,8 +304,16 @@ rule report:
 		HEART_WT<-strsplit("{HEART_WT}", " ");
 		Sweave("diffExp.Rnw")
 		""")
-from snakemake.utils import R
 
+#we do it twice for the TOC
+rule pdflatex:
+	input: "{report}.tex"
+	output: "{report}.pdf"
+	shell: "pdflatex {input}; pdflatex{input}"
+
+
+
+##########################
 #--outFilterIntronMotifs RemoveNoncanonical
 #-library-type=fr-secondstrand unclear if this is appropriate
 #http://seqanswers.com/forums/showthread.php?t=9418 
