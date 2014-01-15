@@ -65,9 +65,6 @@ rule dirs:
 	output: DIRS
 	shell: "mkdir -p "+' '.join(DIRS)
 
-rule ercc:
-	input: ERCC
-
 ##### TRIMMING #####
 #cutadapt will auto-gz if .gz is in the output name
 rule trim:
@@ -135,18 +132,18 @@ rule sortbam:
 
 #### ERCC #####
 rule ERCCnix:
-     output: "refs/ERCC92.nix"
-     input: "refs/ERCC92.fa"
-     shell: "{INDEX} {output} {input}"
+	output: "refs/ERCC92.nix"
+	input: "refs/ERCC92.fa"
+	shell: "{INDEX} {output} {input}"
 
 rule ERCCbam:
-     output: temp("ercc/{sample}.bam")
-     input: fastq="raw/{sample}.trimmed.fastq.gz", ref="refs/ERCC92.nix"
-     shell: "{ALIGN} -d refs/ERCC92.nix -f {input.fastq} -o SAM | {SAMTOOLS} view -bS - > {output}"
+	input: fastq="raw/{sample}.trimmed.fastq.gz", ref="refs/ERCC92.nix"
+	output: temp("ercc/{sample}.bam")
+	shell: "{ALIGN} -d refs/ERCC92.nix -f {input.fastq} -o SAM | {SAMTOOLS} view -bS - > {output}"
 
 rule idxstats:
-	output: "ercc/{sample}.idxstats"
 	input: "ercc/{sample}.sorted.bam"
+	output: "ercc/{sample}.idxstats"
 	shell: "{SAMTOOLS} idxstats {input} > {output}"
 
 rule idxsummary:
@@ -202,16 +199,18 @@ rule cufflinks:
 CDNA=REFDIR+"Sequence/Transcripts/Mus_musculus.GRCm38.74.cdna.all"
 rule txIndex:
 	input: CDNA+'.fa'
-	output: CDNA+'.1.ebwt'
-	shell: "bowtie-build  --offrate 1 {CDNA}.fa {CDNA}"
+	output: CDNA+'.nix'
+	shell: "{INDEX} {output} {input}"
 
 rule express:
-	input: "raw/{sample}.fastq", 
+	input: fq="raw/{sample}.trimmed.fastq.gz", ref=CDNA+'.nix'
 	output: "express/{sample}"
-	shell: """
-	       mkdir -p {output}
-	       bowtie -aS -X 800 --offrate 1 {CDNA} {input} | {EXPR} {CDNA}.fa -o {output}
-	       """
+	log: "logs/express.log"
+	shell:
+			"""
+			mkdir -p {output}
+			{ALIGN} -d {input.ref} -rALL -f {input.fq} -o SAM | {EXPR} {CDNA}.fa -o {output}
+			"""
 
 ##### Annotation #####
 rule htseq:
@@ -240,7 +239,7 @@ rule report:
 rule pdflatex:
 	input: "{report}.tex"
 	output: "{report}.pdf"
-	shell: "pdflatex {input}; pdflatex{input}"
+	shell: "pdflatex {input}; pdflatex {input}"
 
 #### Tracks #####
 rule bamtobdg:

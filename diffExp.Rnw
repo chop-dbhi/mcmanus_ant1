@@ -223,7 +223,7 @@ Significantly differentially expressed genes (padj<\Sexpr{myPval}). Fold change 
 
 resSig<-subset(res[,1:9],padj < myPval)
 names(resSig)<-c('gene','ensid','baseMean','bNorm','bRB','fc','log2fc','pval','padj')
-myXtableOne<-xtable(resSig[order(resSig$pval),1:9],type=tex,caption=paste("Significant (P<",myPval,") differential expression in ANT1 msucle after the correction for multiple testing"),display=c('d','s','s','E','E','E','g','g','g','g'))
+myXtableOne<-xtable(resSig[order(resSig$pval),1:9],type=tex,caption=paste("Significant (P<",myPval,") differential expression in ANT1 after the correction for multiple testing.",nrow(resSig),"genes."),display=c('d','s','s','E','E','E','g','g','g','g'))
 
 print(myXtableOne,include.rownames=FALSE, tabular.environment = "longtable", floating = FALSE, size="\\footnotesize")
 @
