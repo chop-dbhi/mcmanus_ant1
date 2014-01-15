@@ -125,8 +125,14 @@ starstats$cond<-conds
 
 cds <- newCountDataSet( countsMatrix, pdata$condition )
 
+ercc.counts<-read.table("ercc.counts",col.names=c("sample","count"),stringsAsFactors=FALSE)
 
-cds <- estimateSizeFactors( cds )
+#these better be in the same order
+stopifnot(samples==ercc.counts$sample)
+sizeFactors(cds)<-ercc.counts$count
+
+#not going to estimate if using ercc
+#cds <- estimateSizeFactors( cds )
 
 #fits: parameteric or local
 #methods: pooled per-condition
@@ -176,6 +182,15 @@ The STAR  used for the samples is as follows:
 --genomeLoad NoSharedMemory --outSAMattributes All --outSAMstrandField intronMotif --sjdbGTFfile {GTFFILE}
 \end{verbatim}
 
+\subsection{Normalization}
+ERCC spike-ins were downloaded from \url{http://tools.invitrogen.com/downloads/ERCC92.fa} and used as a reference. Total counts from all 92 sequences are below. These are used for the \emph{sizeFactors} in DESeq such that they become divisors for each sample count.
+
+<<ercc,results=tex,echo=F>>=
+
+myXtableERCC<-xtable(ercc.counts,type=tex,caption=paste("Total ERCC read counts"),display=c('s','s','d'))
+print(myXtableERCC,include.rownames=FALSE, tabular.environment = "longtable", floating = FALSE, size="\\footnotesize")
+@
+\pagebreak
 \subsection{DESeq}
 A reanalysis of the non-normalized count data was performed using the
 R-based RNA-Seq analysis package DESeq \cite{Anders} in order to
@@ -202,7 +217,7 @@ Only genes with a combined count of \Sexpr{minCount} among all the samples (both
 \pagebreak
 \subsection{Muscle Results}
 \subsubsection{Significantly DE genes in muscle}
-Significantly differentially expressed genes (padj<\Sexpr{myPval}. Fold change is ANT1/B6ME.
+Significantly differentially expressed genes (padj<\Sexpr{myPval}). Fold change is ANT1/B6ME.
 
 <<dePval,results=tex,echo=F>>=
 
