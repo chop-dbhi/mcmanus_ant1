@@ -36,25 +36,6 @@ HEART_KO = "IonXpressRNA_010.R_2013_12_19_16_11_21_user_1PR-13-RNA-Seq_whole_tra
 #B6ME odds
 HEART_WT = "IonXpressRNA_009.R_2013_12_19_16_11_21_user_1PR-13-RNA-Seq_whole_transcriptome IonXpressRNA_011.R_2013_12_18_20_25_40_user_1PR-12-RNA-Seq_whole_transcriptome  IonXpressRNA_013.R_2013_12_20_12_50_23_user_1PR-14-RNA-Seq_whole_transcriptome  IonXpressRNA_015.R_2013_12_21_20_34_59_user_1PR-15-RNA-Seq_whole_transcriptome"
 
-COLORS = """
-141,211,199
-255,255,179
-190,186,218
-251,128,114
-128,177,211
-253,180,98
-179,222,105
-252,205,229
-217,217,217
-188,128,189
-204,235,197
-255,237,111
-190,174,212
-253,192,134
-56,108,176
-191,91,23
-""".split()
-
 GROUP_NAMES = 'MUSCLE_KO MUSCLE_WT HEART_KO HEART_WT'.split()
 SAMPLES = ' '.join([MUSCLE_KO,MUSCLE_WT,HEART_KO,HEART_WT]).split()
 PRETTY_NAMES = ['{0}_{1}'.format(sample,i)  for sample in GROUP_NAMES for i in range(1, 5)]
@@ -75,37 +56,19 @@ RNASEQC_DIR = ROOT+"RNASEQC_DIR/"
 RNASEQC_SENT = RNASEQC_DIR+"index.html"
 BIGWIGS = ['tracks/'+f+'.bw' for f in SAMPLES]
 QCED = ['fastqc/'+f+'.trimmed_fastqc.zip' for f in SAMPLES]
+ERCC = ['ercc/'+f+'.idxstats' for f in SAMPLES]
 
 rule all:
-	input: DIRS, CHRNAME, MAPPED, CUFFED, COUNTS, GATKED, RNASEQC_SENT, LOGS
-
-rule logs:
-	input: LOGS
-
-rule expr:
-	input: EXPRED
+	input: DIRS, CHRNAME, MAPPED, CUFFED, COUNTS, GATKED, RNASEQC_SENT, LOGS, QCED, BIGWIGS, EXPRED
 
 rule dirs:
 	output: DIRS
 	shell: "mkdir -p "+' '.join(DIRS)
 
-rule counts:
-	input: COUNTS
+rule ercc:
+	input: ERCC
 
-rule gatked:
-	input: GATKED
-
-rule starindex:
-	input: FASTAREF
-	output: CHRNAME
-	shell: "{STAR} --limitGenomeGenerateRAM 54760833024 --runMode genomeGenerate --genomeDir {STARREFDIR} --genomeFastaFiles {input}"
-
-rule bw:
-	input: BIGWIGS
-
-rule qcit:
-	input: QCED
-
+##### TRIMMING #####
 #cutadapt will auto-gz if .gz is in the output name
 rule trim:
 	input: "{sample}.fastq"
@@ -113,10 +76,11 @@ rule trim:
 	threads: 1
 	shell: "{CUTADAPT} -m 16 -b GGCCAAGGCG -o {output} {input}"
 
-rule qc:
-	input: "raw/{sample}.trimmed.fastq.gz"
-	output: "fastqc/{sample}.trimmed_fastqc.zip"
-	shell: "{TOOLDIR}/FastQC/fastqc -o fastqc {input}"
+##### ALIGNMENT #####
+rule starindex:
+	input: FASTAREF
+	output: CHRNAME
+	shell: "{STAR} --limitGenomeGenerateRAM 54760833024 --runMode genomeGenerate --genomeDir {STARREFDIR} --genomeFastaFiles {input}"
 
 rule map:
 	input:  "raw/{sample}.trimmed.fastq.gz"
@@ -129,6 +93,7 @@ rule map:
 		mv {wildcards.sample}_Log.final.out {wildcards.sample}_Log.out {wildcards.sample}_Log.progress.out {wildcards.sample}_SJ.out.tab starlogs
 		"""
 
+#this is for the table in the diffExp report
 rule parselogs:
 	input: expand('starlogs/{sample}_Log.final.out', sample=SAMPLES)
 	output: "starlogs.parsed.txt"
@@ -154,15 +119,13 @@ rule parselogs:
 						elif multiple_hits_p.search(line):
 							multiple_hits=multiple_hits_p.search(line).group(1)
 				outfile.write('{0}\t{1}\t{2}\t{3}\n'.format(sample,input_reads,unique_reads,multiple_hits))
-		
+
 rule samtobam:
 	input:  "{sample}.sam"
 	output: temp("{sample}.bam")
 	threads: 1
 	shell:  "{SAMTOOLS} view -bS {input} > {output}"
 
-
-	
 #novosort can index
 rule sortbam:
 	input: "{sample}.bam"
@@ -170,6 +133,36 @@ rule sortbam:
 	threads: 24
 	shell: "{SORT} -t /nas/is1/tmp -s -i -o {output.bam} {input}"
 
+#### ERCC #####
+rule ERCCnix:
+     output: "refs/ERCC92.nix"
+     input: "refs/ERCC92.fa"
+     shell: "{INDEX} {output} {input}"
+
+rule ERCCbam:
+     output: temp("ercc/{sample}.bam")
+     input: fastq="raw/{sample}.trimmed.fastq.gz", ref="refs/ERCC92.nix"
+     shell: "{ALIGN} -d refs/ERCC92.nix -f {input.fastq} -o SAM | {SAMTOOLS} view -bS - > {output}"
+
+rule idxstats:
+	output: "ercc/{sample}.idxstats"
+	input: "ercc/{sample}.sorted.bam"
+	shell: "{SAMTOOLS} idxstats {input} > {output}"
+
+rule idxsummary:
+	output: "ercc.counts"
+	input: expand('ercc/{sample}.idxstats', sample=SAMPLES)
+	shell: 
+			"""
+			grep '^\*' {input} | cut -f1,4 | sed -e 's/\.idxstats:\*//' | sed -e 's/ercc\///'> ercc.counts
+			"""
+
+#### QC #####
+rule fastqc:
+	input: "raw/{sample}.trimmed.fastq.gz"
+	output: "fastqc/{sample}.trimmed_fastqc.zip"
+	shell: "{TOOLDIR}/FastQC/fastqc -o fastqc {input}"
+	
 rule AddOrReplaceReadGroups:
 	input: "{sample}.sorted.bam"
 	output: "{sample}.sorted.gatk.bam"
@@ -179,13 +172,19 @@ rule index:
 	input: "{sample}.sorted.gatk.bam"
 	output: "{sample}.sorted.gatk.bam.bai"
 	shell: "java -jar {TOOLDIR}/picard-tools-1.106/BuildBamIndex.jar INPUT= {input} OUTPUT= {output}"
-		
+
+rule dict:
+	input: "{ref}.fa"
+	output: "{ref}.dict"
+	shell: "java -jar picard-tools-1.106/CreateSequenceDictionary.jar REFERENCE= {input} OUTPUT= {output}"
+
 #samplefile.rnaseqc.txt was made by hand so sue me
 rule rnaseqc:
 	input: SAMPLEFILE, GATKED
 	output: RNASEQC_SENT
 	shell: "java -jar {RNASEQC} -o {RNASEQC_DIR} -r {FASTAREF} -s {SAMPLEFILE} -t {PRIM_GTF} -rRNA {RRNA}"
 
+##### TX Quantification: Cufflinks #####
 rule mask:
 	output: MASKFILE
 	shell: "grep -P 'rRNA|tRNA|MT\t' {GTFFILE} > {MASKFILE}"
@@ -198,6 +197,8 @@ rule cufflinks:
 	       mkdir -p {CUFF_DIR}{wildcards.sample}
 	       {CUFF} -p 8 -g {GTFFILE} -M {MASKFILE} --max-bundle-length 8000000 --multi-read-correct --library-type=fr-secondstrand --output-dir {CUFF_DIR}{wildcards.sample} {input}
 	       """
+	
+#####  TX Quantification: Express  #####
 CDNA=REFDIR+"Sequence/Transcripts/Mus_musculus.GRCm38.74.cdna.all"
 rule txIndex:
 	input: CDNA+'.fa'
@@ -212,6 +213,7 @@ rule express:
 	       bowtie -aS -X 800 --offrate 1 {CDNA} {input} | {EXPR} {CDNA}.fa -o {output}
 	       """
 
+##### Annotation #####
 rule htseq:
 	input: "mapped/{sample}.sorted.bam"
 	output: id="counts/{sample}.tsv"
@@ -220,7 +222,27 @@ rule htseq:
 			"""
 			{SAMTOOLS} view -h {input} | htseq-count --mode intersection-strict --stranded no --minaqual 1 --type exon --idattr gene_id - {GTFFILE} > {output.id}
 			"""
+			
+##### Report #####
+rule report:
+	input: COUNTS
+	output: "diffExp.tex"
+	run:
+		R("""
+		MUSCLE_KO<-strsplit("{MUSCLE_KO}", " ");
+		MUSCLE_WT<-strsplit("{MUSCLE_WT}", " ");
+		HEART_KO<-strsplit("{HEART_KO}", " ");
+		HEART_WT<-strsplit("{HEART_WT}", " ");
+		Sweave("diffExp.Rnw")
+		""")
 
+#we do it twice for the TOC
+rule pdflatex:
+	input: "{report}.tex"
+	output: "{report}.pdf"
+	shell: "pdflatex {input}; pdflatex{input}"
+
+#### Tracks #####
 rule bamtobdg:
 	input: "mapped/{sample}.sorted.bam"
 	output: "mapped/{sample}.bdg"
@@ -242,9 +264,28 @@ rule bigwig:
 			{TOOLDIR}/bedGraphToBigWig {input} mm10.len {output}
 			"""
 
-#, "diffExp.pdf", QCED, RNASEQC_SENT
+#### Site #####
+COLORS = """
+141,211,199
+255,255,179
+190,186,218
+251,128,114
+128,177,211
+253,180,98
+179,222,105
+252,205,229
+217,217,217
+188,128,189
+204,235,197
+255,237,111
+190,174,212
+253,192,134
+56,108,176
+191,91,23
+""".split()
+
 rule siteindex:
-	input: BIGWIGS
+	input: BIGWIGS, "diffExp.pdf", QCED, RNASEQC_SENT
 	output: "site/index.md"
 	run:
 		with open(output[0], 'w') as outfile:
@@ -272,12 +313,12 @@ Most interesting might be the rRNA rate in the multisample [summary document](RN
 > [heartResults.csv](heartResults.csv)
 
 ### Using BigWig Tracks in UCSC Genome Browser
-Go to [http://genome.ucsc.edu/cgi-bin/hgCustom](http://genome.ucsc.edu/cgi-bin/hgCustom) and copy-paste one or more of these into the URL field.
+Go to [http://genome.ucsc.edu/cgi-bin/hgCustom](http://genome.ucsc.edu/cgi-bin/hgCustom), make sure mm10 is selected, and copy-paste one or more of these into the URL field.
 """)
 			for c, b, p in zip(COLORS, BIGWIGS, PRETTY_NAMES):
-				outfile.write("> ```track type=bigWig name={0} smoothingWindow=4 color={1} autoScale=on viewLimits=1:200 visibility=full windowingFunction=maximum bigDataUrl={{{{ site.baseurl }}}}/{2}```\n\n".format(p,c,b))
+				outfile.write("> ```track type=bigWig name={0} db=mm10 smoothingWindow=4 color={1} autoScale=on viewLimits=1:200 visibility=full windowingFunction=maximum bigDataUrl={{{{ site.baseurl }}}}/{2}```\n\n".format(p,c,b))
 			outfile.write("""
-#### Code repository
+### Code repository
 Code used to generate this analysis is located here [http://github.research.chop.edu/BiG/martin-ant1-rnaseq](http://github.research.chop.edu/BiG/martin-ant1-rnaseq). Feel free to reuse.
 """)
 
@@ -295,26 +336,6 @@ rule publishdata:
 		"""
 		rsync -v --update --rsh=ssh -r diffExp.pdf muscleResults.csv heartResults.csv fastqc tracks RNASEQC_DIR {MITOMAP}
 		"""
-
-rule report:
-	input: COUNTS
-	output: "diffExp.tex"
-	run:
-		R("""
-		MUSCLE_KO<-strsplit("{MUSCLE_KO}", " ");
-		MUSCLE_WT<-strsplit("{MUSCLE_WT}", " ");
-		HEART_KO<-strsplit("{HEART_KO}", " ");
-		HEART_WT<-strsplit("{HEART_WT}", " ");
-		Sweave("diffExp.Rnw")
-		""")
-
-#we do it twice for the TOC
-rule pdflatex:
-	input: "{report}.tex"
-	output: "{report}.pdf"
-	shell: "pdflatex {input}; pdflatex{input}"
-
-
 
 ##########################
 #--outFilterIntronMotifs RemoveNoncanonical
