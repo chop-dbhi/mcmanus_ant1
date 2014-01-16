@@ -9,7 +9,8 @@ def get_isilon_mount_path():
 	else:
 		return '/nas/is1/'
 		
-ROOT =          get_isilon_mount_path()+"leipzig/martin/snake-env/"
+#ROOT =          get_isilon_mount_path()+"leipzig/martin/snake-env/"
+ROOT =          ''
 MITOMAP =       "leipzigj@rescommap01.research.chop.edu:/var/www/html/martin-rna-seq/"
 REFDIR =        ROOT+"refs/Mus_musculus/Ensembl/GRCm38/"
 FASTAREF =      REFDIR+"Sequence/WholeGenomeFasta/genome.fa"
@@ -30,6 +31,8 @@ ALIGN =         NOVO+"/novoalign"
 INDEX =         NOVO+"/novoindex"
 SORT =          NOVO+"/novosort"
 CUFF =          TOOLDIR+"/cufflinks-2.1.1.Linux_x86_64/cufflinks"
+CUFFMERGE =     TOOLDIR+"/cufflinks-2.1.1.Linux_x86_64/cuffmerge"
+CUFFDIFF =      TOOLDIR+"/cufflinks-2.1.1.Linux_x86_64/cuffdiff"
 EXPR =          TOOLDIR+"/express-1.5.1-linux_x86_64/express"
 
 #ANT1 evens
@@ -48,19 +51,12 @@ GROUP_NAMES = 'MUSCLE_KO MUSCLE_WT HEART_KO HEART_WT'.split()
 SAMPLES = ' '.join([MUSCLE_KO,MUSCLE_WT,HEART_KO,HEART_WT]).split()
 PRETTY_NAMES = ['{0}_{1}'.format(sample,i)  for sample in GROUP_NAMES for i in range(1, 5)]
 
-SEQ_DIR = ROOT+"raw/"
-MAPPED_DIR = ROOT+"mapped/"
-COUNTS_DIR = ROOT+"counts/"
-CUFF_DIR = ROOT+"cufflinks/"
-EXPR_DIR = ROOT+"express/"
-DIRS = [MAPPED_DIR,COUNTS_DIR,CUFF_DIR]
-MAPPED = [MAPPED_DIR+f+'.sorted.bam' for f in SAMPLES]
-GATKED = [MAPPED_DIR+f+'.sorted.gatk.bam.bai' for f in SAMPLES]
-COUNTS = [COUNTS_DIR+f+'.tsv' for f in SAMPLES]
-CUFFED = [CUFF_DIR+f+'/transcripts.gtf' for f in SAMPLES]
-EXPRED = [EXPR_DIR+'reports/'+f+'/results.xprs' for f in SAMPLES]
-EXPRSAMS = [EXPR_DIR+'bams/'+f+'.sam' for f in SAMPLES]
-EXPRSBAMS = [EXPR_DIR+'bams/'+f+'.sorted.bam' for f in SAMPLES]
+DIRS = ['mapped/','counts/','cufflinks/']
+MAPPED = ['mapped/'+f+'.sorted.bam' for f in SAMPLES]
+GATKED = ['mapped/'+f+'.sorted.gatk.bam.bai' for f in SAMPLES]
+COUNTS = ['counts/'+f+'.tsv' for f in SAMPLES]
+CUFFED = ['cufflinks/'+f+'/transcripts.gtf' for f in SAMPLES]
+EXPRED = ['express/reports/'+f+'/results.xprs' for f in SAMPLES]
 LOGS = 'starlogs.parsed.txt'
 SAMPLEFILE = ROOT+"samplefile.rnaseqc.txt"
 RNASEQC_DIR = ROOT+"RNASEQC_DIR/"
@@ -76,7 +72,7 @@ rule mapped:
 	input: MAPPED
 
 rule expr:
-	input: EXPRSAMS
+	input: EXPRED
 
 rule dirs:
 	output: DIRS
@@ -101,8 +97,8 @@ rule starindex:
 	shell: "{STAR} --limitGenomeGenerateRAM 54760833024 --runMode genomeGenerate --genomeDir {STARREFDIR} --genomeFastaFiles {input}"
 
 rule map:
-	input:  "{path}/raw/{sample}.trimmed.fastq.gz"
-	output: "{path}/mapped/{sample}.sam"
+	input:  "raw/{sample}.trimmed.fastq.gz"
+	output: "mapped/{sample}.sam"
 	threads: 24
 	shell:
 		"""
@@ -162,8 +158,8 @@ rule ERCCnix:
 	shell: "{INDEX} {output} {input}"
 
 rule ERCCbam:
-	input: fastq="{path}/raw/{sample}.trimmed.fastq.gz", ref=ROOT+"refs/ERCC92.nix"
-	output: temp("{path}/ercc/{sample}.bam")
+	input: fastq="raw/{sample}.trimmed.fastq.gz", ref=ROOT+"refs/ERCC92.nix"
+	output: temp("ercc/{sample}.bam")
 	shell: "{ALIGN} -d refs/ERCC92.nix -f {input.fastq} -o SAM | {SAMTOOLS} view -bS - > {output}"
 
 rule idxstats:
@@ -181,8 +177,8 @@ rule idxsummary:
 
 #### QC #####
 rule fastqc:
-	input: "{path}/raw/{sample}.trimmed.fastq.gz"
-	output: "{path}/fastqc/{sample}.trimmed_fastqc.zip"
+	input: "raw/{sample}.trimmed.fastq.gz"
+	output: "fastqc/{sample}.trimmed_fastqc.zip"
 	shell: "{TOOLDIR}/FastQC/fastqc -o fastqc {input}"
 	
 rule AddOrReplaceReadGroups:
@@ -212,13 +208,41 @@ rule mask:
 	shell: "grep -P 'rRNA|tRNA|MT\t' {GTFFILE} > {MASKFILE}"
 
 rule cufflinks:
-	input: "{path}/mapped/{sample}.sorted.bam"
-	output: gtf="{path}/cufflinks/{sample}/transcripts.gtf",iso="{path}/cufflinks/{sample}/isoforms.fpkm_tracking",genes="{path}/cufflinks/{sample}/genes.fpkm_tracking"
+	input: "mapped/{sample}.sorted.bam"
+	output: gtf="cufflinks/{sample}/transcripts.gtf",iso="cufflinks/{sample}/isoforms.fpkm_tracking",genes="cufflinks/{sample}/genes.fpkm_tracking"
 	threads: 8
 	shell: """
-	       mkdir -p {CUFF_DIR}{wildcards.sample}
-	       {CUFF} -p 8 -g {GTFFILE} -M {MASKFILE} --max-bundle-length 8000000 --multi-read-correct --library-type=fr-secondstrand --output-dir {CUFF_DIR}{wildcards.sample} {input}
+	       mkdir -p cufflinks/{wildcards.sample}
+	       {CUFF} -p 8 -g {GTFFILE} -M {MASKFILE} --max-bundle-length 8000000 --multi-read-correct --library-type=fr-secondstrand --output-dir cufflinks/{wildcards.sample} {input}
 	       """
+
+rule cuffreport:
+	input: CUFFED
+	output: "assembly_list.txt"
+	run:
+		with open(output[0], 'w') as outfile:
+			for f in CUFFED:
+				outfile.write('{}\n'.format(f))
+
+rule cuffmerge:
+	input: "assembly_list.txt"
+	output: "cufflinks/merged.gtf"
+	shell:
+		"""
+		{CUFFMERGE} -o {ROOT}cufflinks -g {GTFFILE} -s {FASTAREF} -p 16 {input}
+		"""
+MUSCLE_KO_BAMS = ','.join(['mapped/{0}.sorted.bam'.format(f) for f in MUSCLE_KO.split()])
+MUSCLE_WT_BAMS = ','.join(['mapped/{0}.sorted.bam'.format(f) for f in MUSCLE_WT.split()])
+HEART_KO_BAMS = ','.join(['mapped/{0}.sorted.bam'.format(f) for f in HEART_KO.split()])
+HEART_WT_BAMS = ','.join(['mapped/{0}.sorted.bam'.format(f) for f in HEART_WT.split()])
+
+rule cuffdiff:
+	input: gtf="cufflinks/merged.gtf", samples=expand("mapped/{sample}.sorted.bam", sample=SAMPLES)
+	output: 'cufflinks/cuffdiff/isoforms.fpkm_tracking'
+	shell:
+		"""
+		{CUFFDIFF} -p 16 -o cufflinks/cuffdiff -M {MASKFILE} {input.gtf} {MUSCLE_KO_BAMS} {MUSCLE_WT_BAMS} {HEART_KO_BAMS} {HEART_WT_BAMS} 
+		"""
 
 #####  TX Quantification: Express  #####
 CDNA=REFDIR+"Sequence/Transcripts/Mus_musculus.GRCm38.74.cdna.all"
@@ -228,17 +252,17 @@ rule txIndex:
 	shell: "{INDEX} {output} {input}"
 
 rule expressbam:
-	input: fq="{path}raw/{sample}.trimmed.fastq.gz", ref=CDNA+'.nix'
-	output: "{path}express/bams/{sample}.sam"
-	log: "{path}/logs/express/{sample}.log"
+	input: fq="raw/{sample}.trimmed.fastq.gz", ref=CDNA+'.nix'
+	output: "express/bams/{sample}.sam"
+	log: "logs/express/{sample}.log"
 	shell: "{ALIGN} -d {input.ref} -rALL -f {input.fq} -o SAM 2> {log} > {output}"
 
 # | {SAMTOOLS} view -bS - > {output}
 
 rule expressreps:
-	input: "{path}/express/bams/{sample}.sorted.bam"
-	output: "{path}/express/reports/{sample}/results.xprs"
-	log: "{path}/logs/express/{sample}.log"
+	input: "express/bams/{sample}.sorted.bam"
+	output: "express/reports/{sample}/results.xprs"
+	log: "logs/express/{sample}.log"
 	shell:
 			"""
 			mkdir -p {output}
