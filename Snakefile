@@ -135,11 +135,7 @@ rule parselogs:
 							multiple_hits=multiple_hits_p.search(line).group(1)
 				outfile.write('{0}\t{1}\t{2}\t{3}\n'.format(sample,input_reads,unique_reads,multiple_hits))
 
-rule samtobam:
-	input:  "{sample}.sam"
-	output: temp("{sample}.bam")
-	threads: 1
-	shell:  "{SAMTOOLS} view -bS {input} > {output}"
+
 
 #novosort can index
 rule sortbam:
@@ -147,6 +143,14 @@ rule sortbam:
 	output: bam="{sample}.sorted.bam", bai="{sample}.sorted.bam.bai"
 	threads: 24
 	shell: "{SORT} -t /nas/is1/tmp -s -i -o {output.bam} {input}"
+
+#if you ask for a sorted.bam don't look for a sorted.sam
+#ruleorder: sortbam > samtobam	
+# rule samtobam:
+# 	input:  "{sample}.sam"
+# 	output: temp("{sample}.bam")
+# 	threads: 1
+# 	shell:  "{SAMTOOLS} view -bS {input} > {output}"
 
 #### ERCC #####
 rule ERCCnix:
@@ -212,7 +216,7 @@ rule cufflinks:
 	       mkdir -p {CUFF_DIR}{wildcards.sample}
 	       {CUFF} -p 8 -g {GTFFILE} -M {MASKFILE} --max-bundle-length 8000000 --multi-read-correct --library-type=fr-secondstrand --output-dir {CUFF_DIR}{wildcards.sample} {input}
 	       """
-	
+
 #####  TX Quantification: Express  #####
 CDNA=REFDIR+"Sequence/Transcripts/Mus_musculus.GRCm38.74.cdna.all"
 rule txIndex:
@@ -221,15 +225,15 @@ rule txIndex:
 	shell: "{INDEX} {output} {input}"
 
 rule expressbam:
-	input: fastq=ROOT+"raw/{sample}.trimmed.fastq.gz", ref=CDNA+'.nix'
-	output: temp(ROOT+"express/bams/{sample}.bam")
-	log: ROOT+"logs/express/{sample}.log"
-	shell: "{ALIGN} -d {input.ref} -rALL -f {input.fastq} -o SAM 2> {log} | {SAMTOOLS} view -bS - > {output}"
+	input: fq="raw/{sample}.trimmed.fastq.gz", ref=CDNA+'.nix'
+	output: "express/bams/{sample}.bam"
+	log: "logs/express/{sample}.log"
+	shell: "{ALIGN} -d {input.ref} -rALL -f {input.fq} -o SAM 2> {log} | {SAMTOOLS} view -bS - > {output}"
 		
-rule express:
-	input: fq=ROOT+"express/bams/{sample}.sorted.bam", ref=CDNA+'.nix'
-	output: ROOT+"express/reports/{sample}"
-	log: ROOT+"logs/express/{sample}.log"
+rule expressreps:
+	input: fq="express/bams/{sample}.sorted.bam"
+	output: "express/reports/{sample}"
+	log: "logs/express/{sample}.log"
 	shell:
 			"""
 			mkdir -p {output}
