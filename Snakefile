@@ -70,6 +70,9 @@ ERCC = ['ercc/'+f+'.idxstats' for f in SAMPLES]
 rule all:
 	input: DIRS, CHRNAME, MAPPED, CUFFED, COUNTS, GATKED, RNASEQC_SENT, LOGS, QCED, BIGWIGS
 
+rule mapped:
+	input: MAPPED
+
 rule expr:
 	input: EXPRED
 
