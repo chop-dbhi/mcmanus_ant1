@@ -18,13 +18,13 @@ CHRNAME =       STARREFDIR+"chrName.txt"
 GTFFILE =       REFDIR+"Annotation/Genes/genes.gtf"
 PRIM_GTF =      REFDIR+"Annotation/Genes/primary_genes.gtf"
 MASKFILE =      REFDIR+"Annotation/mask.gtf"
-RRNA =          "mm10_rRNA.list"
+RRNA =          REFDIR+"Annotation/GRCm38_rRNA.list"
 TOOLDIR=        ROOT+"tools"
 STAR =          TOOLDIR+"/STAR_2.3.0e.Linux_x86_64/STAR"
 SAMTOOLS =      TOOLDIR+"/samtools/samtools"
-CUTADAPT =      "../../../bin/cutadapt"
-NOVO =          "../../../bin/Novoalign/3.00.02/novocraft"
-BEDTOOLS =      "../../../bin/BEDTools/2.16.2"
+CUTADAPT =      ROOT+"../../../bin/cutadapt"
+NOVO =          ROOT+"../../../bin/Novoalign/3.00.02/novocraft"
+BEDTOOLS =      ROOT+"../../../bin/BEDTools/2.16.2"
 RNASEQC =       TOOLDIR+"/RNA-SeQC_v1.1.7.jar"
 ALIGN =         NOVO+"/novoalign"
 INDEX =         NOVO+"/novoindex"
@@ -58,7 +58,9 @@ MAPPED = [MAPPED_DIR+f+'.sorted.bam' for f in SAMPLES]
 GATKED = [MAPPED_DIR+f+'.sorted.gatk.bam.bai' for f in SAMPLES]
 COUNTS = [COUNTS_DIR+f+'.tsv' for f in SAMPLES]
 CUFFED = [CUFF_DIR+f+'/transcripts.gtf' for f in SAMPLES]
-EXPRED = [EXPR_DIR+'reports/'+f for f in SAMPLES]
+EXPRED = [EXPR_DIR+'reports/'+f+'/results.xprs' for f in SAMPLES]
+EXPRSAMS = [EXPR_DIR+'bams/'+f+'.sam' for f in SAMPLES]
+EXPRSBAMS = [EXPR_DIR+'bams/'+f+'.sorted.bam' for f in SAMPLES]
 LOGS = 'starlogs.parsed.txt'
 SAMPLEFILE = ROOT+"samplefile.rnaseqc.txt"
 RNASEQC_DIR = ROOT+"RNASEQC_DIR/"
@@ -74,17 +76,15 @@ rule mapped:
 	input: MAPPED
 
 rule expr:
-	input: EXPRED
+	input: EXPRSAMS
 
 rule dirs:
 	output: DIRS
 	shell: "mkdir -p "+' '.join(DIRS)
 
-rule dosomething:
-	output: "something.txt"
-	shell: """
-			echo "soemthign\n" > {ROOT}/something.txt
-			"""
+rule doAnything:
+	output: ROOT+"testme.txt"
+	shell: "touch {ROOT}testme.txt"
 
 ##### TRIMMING #####
 #cutadapt will auto-gz if .gz is in the output name
@@ -101,8 +101,8 @@ rule starindex:
 	shell: "{STAR} --limitGenomeGenerateRAM 54760833024 --runMode genomeGenerate --genomeDir {STARREFDIR} --genomeFastaFiles {input}"
 
 rule map:
-	input:  "raw/{sample}.trimmed.fastq.gz"
-	output: "mapped/{sample}.sam"
+	input:  "{path}/raw/{sample}.trimmed.fastq.gz"
+	output: "{path}/mapped/{sample}.sam"
 	threads: 24
 	shell:
 		"""
@@ -149,21 +149,21 @@ rule sortbam:
 
 #if you ask for a sorted.bam don't look for a sorted.sam
 #ruleorder: sortbam > samtobam	
-# rule samtobam:
-# 	input:  "{sample}.sam"
-# 	output: temp("{sample}.bam")
-# 	threads: 1
-# 	shell:  "{SAMTOOLS} view -bS {input} > {output}"
+rule samtobam:
+	input:  "{sample}.sam"
+	output: temp("{sample}.bam")
+	threads: 1
+	shell:  "{SAMTOOLS} view -bS {input} > {output}"
 
 #### ERCC #####
 rule ERCCnix:
-	output: "refs/ERCC92.nix"
-	input: "refs/ERCC92.fa"
+	output: ROOT+"refs/ERCC92.nix"
+	input: ROOT+"refs/ERCC92.fa"
 	shell: "{INDEX} {output} {input}"
 
 rule ERCCbam:
-	input: fastq="raw/{sample}.trimmed.fastq.gz", ref="refs/ERCC92.nix"
-	output: temp("ercc/{sample}.bam")
+	input: fastq="{path}/raw/{sample}.trimmed.fastq.gz", ref=ROOT+"refs/ERCC92.nix"
+	output: temp("{path}/ercc/{sample}.bam")
 	shell: "{ALIGN} -d refs/ERCC92.nix -f {input.fastq} -o SAM | {SAMTOOLS} view -bS - > {output}"
 
 rule idxstats:
@@ -181,8 +181,8 @@ rule idxsummary:
 
 #### QC #####
 rule fastqc:
-	input: "raw/{sample}.trimmed.fastq.gz"
-	output: "fastqc/{sample}.trimmed_fastqc.zip"
+	input: "{path}/raw/{sample}.trimmed.fastq.gz"
+	output: "{path}/fastqc/{sample}.trimmed_fastqc.zip"
 	shell: "{TOOLDIR}/FastQC/fastqc -o fastqc {input}"
 	
 rule AddOrReplaceReadGroups:
@@ -212,8 +212,8 @@ rule mask:
 	shell: "grep -P 'rRNA|tRNA|MT\t' {GTFFILE} > {MASKFILE}"
 
 rule cufflinks:
-	input: "mapped/{sample}.sorted.bam"
-	output: gtf="cufflinks/{sample}/transcripts.gtf",iso="cufflinks/{sample}/isoforms.fpkm_tracking",genes="cufflinks/{sample}/genes.fpkm_tracking"
+	input: "{path}/mapped/{sample}.sorted.bam"
+	output: gtf="{path}/cufflinks/{sample}/transcripts.gtf",iso="{path}/cufflinks/{sample}/isoforms.fpkm_tracking",genes="{path}/cufflinks/{sample}/genes.fpkm_tracking"
 	threads: 8
 	shell: """
 	       mkdir -p {CUFF_DIR}{wildcards.sample}
@@ -228,19 +228,21 @@ rule txIndex:
 	shell: "{INDEX} {output} {input}"
 
 rule expressbam:
-	input: fq="raw/{sample}.trimmed.fastq.gz", ref=CDNA+'.nix'
-	output: "express/bams/{sample}.bam"
-	log: "logs/express/{sample}.log"
-	shell: "{ALIGN} -d {input.ref} -rALL -f {input.fq} -o SAM 2> {log} | {SAMTOOLS} view -bS - > {output}"
-		
+	input: fq="{path}raw/{sample}.trimmed.fastq.gz", ref=CDNA+'.nix'
+	output: "{path}express/bams/{sample}.sam"
+	log: "{path}/logs/express/{sample}.log"
+	shell: "{ALIGN} -d {input.ref} -rALL -f {input.fq} -o SAM 2> {log} > {output}"
+
+# | {SAMTOOLS} view -bS - > {output}
+
 rule expressreps:
-	input: fq="express/bams/{sample}.sorted.bam"
-	output: "express/reports/{sample}"
-	log: "logs/express/{sample}.log"
+	input: "{path}/express/bams/{sample}.sorted.bam"
+	output: "{path}/express/reports/{sample}/results.xprs"
+	log: "{path}/logs/express/{sample}.log"
 	shell:
 			"""
 			mkdir -p {output}
-			{EXPR} {CDNA}.fa {input.fq} --max-read-len 500 -o {output} 2> {log}
+			{EXPR} {CDNA}.fa {input} --max-read-len 500 -o {output} 2> {log}
 			"""
 
 ##### Annotation #####
