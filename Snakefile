@@ -1,7 +1,15 @@
 import glob
 from snakemake.utils import R
 import re
-ROOT =          "/nas/is1/leipzig/martin/snake-env/"
+import socket
+
+def get_isilon_mount_path():
+	if socket.gethostname()=='respublica':
+		return '/mnt/isilon/cbmi/variome/'
+	else:
+		return '/nas/is1/'
+		
+ROOT =          get_isilon_mount_path()+"leipzig/martin/snake-env/"
 MITOMAP =       "leipzigj@rescommap01.research.chop.edu:/var/www/html/martin-rna-seq/"
 REFDIR =        ROOT+"refs/Mus_musculus/Ensembl/GRCm38/"
 FASTAREF =      REFDIR+"Sequence/WholeGenomeFasta/genome.fa"
@@ -14,9 +22,9 @@ RRNA =          "mm10_rRNA.list"
 TOOLDIR=        ROOT+"tools"
 STAR =          TOOLDIR+"/STAR_2.3.0e.Linux_x86_64/STAR"
 SAMTOOLS =      TOOLDIR+"/samtools/samtools"
-CUTADAPT =      "/nas/is1/bin/cutadapt"
-NOVO =          "/nas/is1/bin/Novoalign/3.00.02/novocraft"
-BEDTOOLS =      "/nas/is1/bin/BEDTools/2.16.2"
+CUTADAPT =      "../../../bin/cutadapt"
+NOVO =          "../../../bin/Novoalign/3.00.02/novocraft"
+BEDTOOLS =      "../../../bin/BEDTools/2.16.2"
 RNASEQC =       TOOLDIR+"/RNA-SeQC_v1.1.7.jar"
 ALIGN =         NOVO+"/novoalign"
 INDEX =         NOVO+"/novoindex"
@@ -44,12 +52,13 @@ SEQ_DIR = ROOT+"raw/"
 MAPPED_DIR = ROOT+"mapped/"
 COUNTS_DIR = ROOT+"counts/"
 CUFF_DIR = ROOT+"cufflinks/"
+EXPR_DIR = ROOT+"express/"
 DIRS = [MAPPED_DIR,COUNTS_DIR,CUFF_DIR]
 MAPPED = [MAPPED_DIR+f+'.sorted.bam' for f in SAMPLES]
 GATKED = [MAPPED_DIR+f+'.sorted.gatk.bam.bai' for f in SAMPLES]
 COUNTS = [COUNTS_DIR+f+'.tsv' for f in SAMPLES]
 CUFFED = [CUFF_DIR+f+'/transcripts.gtf' for f in SAMPLES]
-EXPRED = ['express/'+f for f in SAMPLES]
+EXPRED = [EXPR_DIR+'reports/'+f for f in SAMPLES]
 LOGS = 'starlogs.parsed.txt'
 SAMPLEFILE = ROOT+"samplefile.rnaseqc.txt"
 RNASEQC_DIR = ROOT+"RNASEQC_DIR/"
@@ -59,11 +68,20 @@ QCED = ['fastqc/'+f+'.trimmed_fastqc.zip' for f in SAMPLES]
 ERCC = ['ercc/'+f+'.idxstats' for f in SAMPLES]
 
 rule all:
-	input: DIRS, CHRNAME, MAPPED, CUFFED, COUNTS, GATKED, RNASEQC_SENT, LOGS, QCED, BIGWIGS, EXPRED
+	input: DIRS, CHRNAME, MAPPED, CUFFED, COUNTS, GATKED, RNASEQC_SENT, LOGS, QCED, BIGWIGS
+
+rule expr:
+	input: EXPRED
 
 rule dirs:
 	output: DIRS
 	shell: "mkdir -p "+' '.join(DIRS)
+
+rule dosomething:
+	output: "something.txt"
+	shell: """
+			echo "soemthign\n" > {ROOT}/something.txt
+			"""
 
 ##### TRIMMING #####
 #cutadapt will auto-gz if .gz is in the output name
@@ -202,14 +220,20 @@ rule txIndex:
 	output: CDNA+'.nix'
 	shell: "{INDEX} {output} {input}"
 
+rule expressbam:
+	input: fastq=ROOT+"raw/{sample}.trimmed.fastq.gz", ref=CDNA+'.nix'
+	output: temp(ROOT+"express/bams/{sample}.bam")
+	log: ROOT+"logs/express/{sample}.log"
+	shell: "{ALIGN} -d {input.ref} -rALL -f {input.fastq} -o SAM 2> {log} | {SAMTOOLS} view -bS - > {output}"
+		
 rule express:
-	input: fq="raw/{sample}.trimmed.fastq.gz", ref=CDNA+'.nix'
-	output: "express/{sample}"
-	log: "logs/express.log"
+	input: fq=ROOT+"express/bams/{sample}.sorted.bam", ref=CDNA+'.nix'
+	output: ROOT+"express/reports/{sample}"
+	log: ROOT+"logs/express/{sample}.log"
 	shell:
 			"""
 			mkdir -p {output}
-			{ALIGN} -d {input.ref} -rALL -f {input.fq} -o SAM | {EXPR} {CDNA}.fa -o {output}
+			{EXPR} {CDNA}.fa {input.fq} --max-read-len 500 -o {output} 2> {log}
 			"""
 
 ##### Annotation #####
@@ -319,7 +343,11 @@ Go to [http://genome.ucsc.edu/cgi-bin/hgCustom](http://genome.ucsc.edu/cgi-bin/h
 			outfile.write("""
 ### Code repository
 Code used to generate this analysis is located here [http://github.research.chop.edu/BiG/martin-ant1-rnaseq](http://github.research.chop.edu/BiG/martin-ant1-rnaseq). Feel free to reuse.
+
+### Git hash
+This should match the hash index on the last page of your report.
 """)
+			outfile.write('```{0}```'.format(get_head_hash()))
 
 rule publishsite:
 	input: "site/index.md"
@@ -335,6 +363,10 @@ rule publishdata:
 		"""
 		rsync -v --update --rsh=ssh -r diffExp.pdf muscleResults.csv heartResults.csv fastqc tracks RNASEQC_DIR {MITOMAP}
 		"""
+
+def get_head_hash():
+	return os.popen('git rev-parse --verify HEAD 2>&1').read().strip()
+
 
 ##########################
 #--outFilterIntronMotifs RemoveNoncanonical

@@ -23,14 +23,18 @@ Transcript fasta:
 
 ###To run on raboso###
 ```
-/usr/local/bin/virtualenv-3.3 snake-env
-cd snake-env
-. bin/activate
-snakemake -j 24
+cd snake-env && source bin/activate
+snakemake -j 16
 ```
 
-###To run on variome using PBS###
+###To run on variome###
 ```
 source /nas/is1/leipzig/martin/variome-env/bin/activate
 snakemake --directory /nas/is1/leipzig/martin/snake-env --snakefile /nas/is1/leipzig/martin/snake-env/Snakefile  -c qsub -j 16
-````
+```
+
+###To run on respublica###
+```
+source /mnt/isilon/cbmi/variome/leipzig/martin/respublica-env/bin/activate
+snakemake --directory /mnt/isilon/cbmi/variome/leipzig/martin/snake-env --snakefile /mnt/isilon/cbmi/variome/leipzig/martin/snake-env/Snakefile -c qsub -j 16
+```

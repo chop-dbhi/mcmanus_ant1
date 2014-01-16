@@ -87,3 +87,7 @@ Go to [http://genome.ucsc.edu/cgi-bin/hgCustom](http://genome.ucsc.edu/cgi-bin/h
 
 ### Code repository
 Code used to generate this analysis is located here [http://github.research.chop.edu/BiG/martin-ant1-rnaseq](http://github.research.chop.edu/BiG/martin-ant1-rnaseq). Feel free to reuse.
+
+### Git hash
+This should match the hash index on the last page of your report.
+```e39634ec4e162bd71c69cc19c768838e68402faf```
