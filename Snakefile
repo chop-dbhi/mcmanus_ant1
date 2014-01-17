@@ -3,16 +3,9 @@ from snakemake.utils import R
 import re
 import socket
 
-def get_isilon_mount_path():
-	if socket.gethostname()=='respublica':
-		return '/mnt/isilon/cbmi/variome/'
-	else:
-		return '/nas/is1/'
-		
-#ROOT =          get_isilon_mount_path()+"leipzig/martin/snake-env/"
-ROOT =          ''
+
 MITOMAP =       "leipzigj@rescommap01.research.chop.edu:/var/www/html/martin-rna-seq/"
-REFDIR =        ROOT+"refs/Mus_musculus/Ensembl/GRCm38/"
+REFDIR =        "refs/Mus_musculus/Ensembl/GRCm38/"
 FASTAREF =      REFDIR+"Sequence/WholeGenomeFasta/genome.fa"
 STARREFDIR =    REFDIR+"star/"
 CHRNAME =       STARREFDIR+"chrName.txt"
@@ -20,16 +13,18 @@ GTFFILE =       REFDIR+"Annotation/Genes/genes.gtf"
 PRIM_GTF =      REFDIR+"Annotation/Genes/primary_genes.gtf"
 MASKFILE =      REFDIR+"Annotation/mask.gtf"
 RRNA =          REFDIR+"Annotation/GRCm38_rRNA.list"
-TOOLDIR=        ROOT+"tools"
-STAR =          TOOLDIR+"/STAR_2.3.0e.Linux_x86_64/STAR"
-SAMTOOLS =      TOOLDIR+"/samtools/samtools"
-CUTADAPT =      ROOT+"../../../bin/cutadapt"
-NOVO =          ROOT+"../../../bin/Novoalign/3.00.02/novocraft"
-BEDTOOLS =      ROOT+"../../../bin/BEDTools/2.16.2"
-RNASEQC =       TOOLDIR+"/RNA-SeQC_v1.1.7.jar"
+
+##### TOOLS #####
+CUTADAPT =      "../../../bin/cutadapt"
+BEDTOOLS =      "../../../bin/BEDTools/2.16.2"
+NOVO =          "../../../bin/Novoalign/3.00.02/novocraft"
 ALIGN =         NOVO+"/novoalign"
 INDEX =         NOVO+"/novoindex"
 SORT =          NOVO+"/novosort"
+TOOLDIR=        "tools"
+RNASEQC =       TOOLDIR+"/RNA-SeQC_v1.1.7.jar"
+STAR =          TOOLDIR+"/STAR_2.3.0e.Linux_x86_64/STAR"
+SAMTOOLS =      TOOLDIR+"/samtools/samtools"
 CUFF =          TOOLDIR+"/cufflinks-2.1.1.Linux_x86_64/cufflinks"
 CUFFMERGE =     TOOLDIR+"/cufflinks-2.1.1.Linux_x86_64/cuffmerge"
 CUFFDIFF =      TOOLDIR+"/cufflinks-2.1.1.Linux_x86_64/cuffdiff"
@@ -58,8 +53,8 @@ COUNTS = ['counts/'+f+'.tsv' for f in SAMPLES]
 CUFFED = ['cufflinks/'+f+'/transcripts.gtf' for f in SAMPLES]
 EXPRED = ['express/reports/'+f+'/results.xprs' for f in SAMPLES]
 LOGS = 'starlogs.parsed.txt'
-SAMPLEFILE = ROOT+"samplefile.rnaseqc.txt"
-RNASEQC_DIR = ROOT+"RNASEQC_DIR/"
+SAMPLEFILE = "samplefile.rnaseqc.txt"
+RNASEQC_DIR = "RNASEQC_DIR/"
 RNASEQC_SENT = RNASEQC_DIR+"index.html"
 BIGWIGS = ['tracks/'+f+'.bw' for f in SAMPLES]
 QCED = ['fastqc/'+f+'.trimmed_fastqc.zip' for f in SAMPLES]
@@ -79,8 +74,8 @@ rule dirs:
 	shell: "mkdir -p "+' '.join(DIRS)
 
 rule doAnything:
-	output: ROOT+"testme.txt"
-	shell: "touch {ROOT}testme.txt"
+	output: "testme.txt"
+	shell: "touch testme.txt"
 
 ##### TRIMMING #####
 #cutadapt will auto-gz if .gz is in the output name
@@ -92,17 +87,17 @@ rule trim:
 
 ##### ALIGNMENT #####
 rule starindex:
-	input: FASTAREF
+	input: ref=FASTAREF, starref=STARREFDIR, 
 	output: CHRNAME
-	shell: "{STAR} --limitGenomeGenerateRAM 54760833024 --runMode genomeGenerate --genomeDir {STARREFDIR} --genomeFastaFiles {input}"
+	shell: "{STAR} --limitGenomeGenerateRAM 54760833024 --runMode genomeGenerate --genomeDir {input.starref} --genomeFastaFiles {input.ref}"
 
 rule map:
-	input:  "raw/{sample}.trimmed.fastq.gz"
+	input:  sample="raw/{sample}.trimmed.fastq.gz", starref=STARREFDIR, gtf=GTFFILE
 	output: "mapped/{sample}.sam"
 	threads: 24
 	shell:
 		"""
-		{STAR} --genomeDir {STARREFDIR} --outFileNamePrefix {wildcards.sample}_ --readFilesIn {input} --runThreadN 24 --genomeLoad NoSharedMemory --outSAMattributes All --outSAMstrandField intronMotif --sjdbGTFfile {GTFFILE}
+		{STAR} --genomeDir {input.starref} --outFileNamePrefix {wildcards.sample}_ --readFilesIn {input.sample} --runThreadN 24 --genomeLoad NoSharedMemory --outSAMattributes All --outSAMstrandField intronMotif --sjdbGTFfile {input.gtf}
 		mv {wildcards.sample}_Aligned.out.sam {output}
 		mv {wildcards.sample}_Log.final.out {wildcards.sample}_Log.out {wildcards.sample}_Log.progress.out {wildcards.sample}_SJ.out.tab starlogs
 		"""
@@ -153,14 +148,14 @@ rule samtobam:
 
 #### ERCC #####
 rule ERCCnix:
-	output: ROOT+"refs/ERCC92.nix"
-	input: ROOT+"refs/ERCC92.fa"
+	output: "refs/ERCC92.nix"
+	input: "refs/ERCC92.fa"
 	shell: "{INDEX} {output} {input}"
 
 rule ERCCbam:
-	input: fastq="raw/{sample}.trimmed.fastq.gz", ref=ROOT+"refs/ERCC92.nix"
+	input: fastq="raw/{sample}.trimmed.fastq.gz", ref="refs/ERCC92.nix"
 	output: temp("ercc/{sample}.bam")
-	shell: "{ALIGN} -d refs/ERCC92.nix -f {input.fastq} -o SAM | {SAMTOOLS} view -bS - > {output}"
+	shell: "{ALIGN} -d {input.ref} -f {input.fastq} -o SAM | {SAMTOOLS} view -bS - > {output}"
 
 rule idxstats:
 	input: "ercc/{sample}.sorted.bam"
@@ -198,22 +193,23 @@ rule dict:
 
 #samplefile.rnaseqc.txt was made by hand so sue me
 rule rnaseqc:
-	input: SAMPLEFILE, GATKED
+	input: sample=SAMPLEFILE, gatked=GATKED, rnaseqc=RNASEQC, rnaseqc_dir=RNASEQC_DIR, ref=FASTAREF, gtf=PRIM_GTF, rna=RRNA
 	output: RNASEQC_SENT
-	shell: "java -jar {RNASEQC} -o {RNASEQC_DIR} -r {FASTAREF} -s {SAMPLEFILE} -t {PRIM_GTF} -rRNA {RRNA}"
+	shell: "java -jar {input.rnaseqc} -o {input.rnaseqc_dir} -r {input.ref} -s {input.sample} -t {input.gtf} -rRNA {input.rna}"
 
 ##### TX Quantification: Cufflinks #####
 rule mask:
+	input: gtf=GTFFILE
 	output: MASKFILE
-	shell: "grep -P 'rRNA|tRNA|MT\t' {GTFFILE} > {MASKFILE}"
+	shell: "grep -P 'rRNA|tRNA|MT\t' {input.gtf} > {MASKFILE}"
 
 rule cufflinks:
 	input: "mapped/{sample}.sorted.bam"
-	output: gtf="cufflinks/{sample}/transcripts.gtf",iso="cufflinks/{sample}/isoforms.fpkm_tracking",genes="cufflinks/{sample}/genes.fpkm_tracking"
+	output: gtf="cufflinks/{sample}/transcripts.gtf",iso="cufflinks/{sample}/isoforms.fpkm_tracking",genes="cufflinks/{sample}/genes.fpkm_tracking", gtf=GTFFILE, mask=MASKFILE
 	threads: 8
 	shell: """
 	       mkdir -p cufflinks/{wildcards.sample}
-	       {CUFF} -p 8 -g {GTFFILE} -M {MASKFILE} --max-bundle-length 8000000 --multi-read-correct --library-type=fr-secondstrand --output-dir cufflinks/{wildcards.sample} {input}
+	       {CUFF} -p 8 -g {input.gtf} -M {input.mask} --max-bundle-length 8000000 --multi-read-correct --library-type=fr-secondstrand --output-dir cufflinks/{wildcards.sample} {input}
 	       """
 
 rule cuffreport:
@@ -225,11 +221,11 @@ rule cuffreport:
 				outfile.write('{}\n'.format(f))
 
 rule cuffmerge:
-	input: "assembly_list.txt"
+	input: "assembly_list.txt", gtf=GTFFILE, ref=FASTAREF
 	output: "cufflinks/merged.gtf"
 	shell:
 		"""
-		{CUFFMERGE} -o {ROOT}cufflinks -g {GTFFILE} -s {FASTAREF} -p 16 {input}
+		 /usr/local/bin/python2.7/python {CUFFMERGE} -o cufflinks -g {input.gtf} -s {input.ref} -p 16 {input}
 		"""
 MUSCLE_KO_BAMS = ','.join(['mapped/{0}.sorted.bam'.format(f) for f in MUSCLE_KO.split()])
 MUSCLE_WT_BAMS = ','.join(['mapped/{0}.sorted.bam'.format(f) for f in MUSCLE_WT.split()])
@@ -237,11 +233,11 @@ HEART_KO_BAMS = ','.join(['mapped/{0}.sorted.bam'.format(f) for f in HEART_KO.sp
 HEART_WT_BAMS = ','.join(['mapped/{0}.sorted.bam'.format(f) for f in HEART_WT.split()])
 
 rule cuffdiff:
-	input: gtf="cufflinks/merged.gtf", samples=expand("mapped/{sample}.sorted.bam", sample=SAMPLES)
+	input: gtf="cufflinks/merged.gtf", mask=MASKFILE, samples=expand("mapped/{sample}.sorted.bam", sample=SAMPLES)
 	output: 'cufflinks/cuffdiff/isoforms.fpkm_tracking'
 	shell:
 		"""
-		{CUFFDIFF} -p 16 -o cufflinks/cuffdiff -M {MASKFILE} {input.gtf} {MUSCLE_KO_BAMS} {MUSCLE_WT_BAMS} {HEART_KO_BAMS} {HEART_WT_BAMS} 
+		{CUFFDIFF} -p 16 -o cufflinks/cuffdiff -M {input.mask} {input.gtf} {MUSCLE_KO_BAMS} {MUSCLE_WT_BAMS} {HEART_KO_BAMS} {HEART_WT_BAMS} 
 		"""
 
 #####  TX Quantification: Express  #####
@@ -271,12 +267,12 @@ rule expressreps:
 
 ##### Annotation #####
 rule htseq:
-	input: "mapped/{sample}.sorted.bam"
+	input: sample="mapped/{sample}.sorted.bam", gtf=GTFFILE
 	output: id="counts/{sample}.tsv"
 	threads: 1
 	shell:
 			"""
-			{SAMTOOLS} view -h {input} | htseq-count --mode intersection-strict --stranded no --minaqual 1 --type exon --idattr gene_id - {GTFFILE} > {output.id}
+			{SAMTOOLS} view -h {input.sample} | htseq-count --mode intersection-strict --stranded no --minaqual 1 --type exon --idattr gene_id - {input.gtf} > {output.id}
 			"""
 			
 ##### Report #####
@@ -300,9 +296,9 @@ rule pdflatex:
 
 #### Tracks #####
 rule bamtobdg:
-	input: "mapped/{sample}.sorted.bam"
+	input: sample="mapped/{sample}.sorted.bam", ref=FASTAREF
 	output: "mapped/{sample}.bdg"
-	shell: "{BEDTOOLS}/bedtools genomecov -ibam {input} -g {FASTAREF} -bg > {output}"
+	shell: "{BEDTOOLS}/bedtools genomecov -ibam {input.sample} -g {input.ref} -bg > {output}"
 
 rule chrify:
 	input: "{sample}.bdg"
@@ -409,3 +405,12 @@ def get_head_hash():
 
 #java -jar picard-tools-1.106/CreateSequenceDictionary.jar REFERENCE= ../refs/Mus_musculus/Ensembl/GRCm38/Sequence/WholeGenomeFasta/genome.fa OUTPUT= ../refs/Mus_musculus/Ensembl/GRCm38/Sequence/WholeGenomeFasta/genome.dict
 #perl -ne 'm/^([0-9]+|MT|X|Y)/ && print' /nas/is1/leipzig/martin/snake-env/refs/Mus_musculus/Ensembl/GRCm38/Annotation/Genes/genes.gtf > /nas/is1/leipzig/martin/snake-env/refs/Mus_musculus/Ensembl/GRCm38/Annotation/Genes/primary_genes.gtf
+
+##### ROOT (not used) ####
+def get_isilon_mount_path():
+	if socket.gethostname()=='respublica':
+		return '/mnt/isilon/cbmi/variome/'
+	else:
+		return '/nas/is1/'
+
+ROOT =          get_isilon_mount_path()+"leipzig/martin/snake-env/"
