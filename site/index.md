@@ -43,6 +43,11 @@ layout: wide
 Most interesting might be the rRNA rate in the multisample [summary document](RNASEQC_DIR/countMetrics.html).
 > [RNA-SeQC reports](RNASEQC_DIR)
 
+### HT-Seq Counts
+> [Raw HT-Seq Counts](raw_counts.tab.txt)
+
+> [ERCC Spike-in Normalized Counts](normalized_counts.tab.txt)
+
 ### Differential expression analysis report and significantly DE gene tables
 > [diffExp.pdf](diffExp.pdf)
 
@@ -90,4 +95,4 @@ Code used to generate this analysis is located here [http://github.research.chop
 
 ### Git hash
 This should match the hash index on the last page of your report.
-```e39634ec4e162bd71c69cc19c768838e68402faf```
+```f73d35d9f6c603a1130688dc81f53157b51f5616```

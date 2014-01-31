@@ -6,6 +6,7 @@ import socket
 
 MITOMAP =       "leipzigj@rescommap01.research.chop.edu:/var/www/html/martin-rna-seq/"
 REFDIR =        "refs/Mus_musculus/Ensembl/GRCm38/"
+TMPDIR =        "../../../../../tmp/"
 FASTAREF =      REFDIR+"Sequence/WholeGenomeFasta/genome.fa"
 STARREFDIR =    REFDIR+"star/"
 CHRNAME =       STARREFDIR+"chrName.txt"
@@ -47,7 +48,7 @@ SAMPLES = ' '.join([MUSCLE_KO,MUSCLE_WT,HEART_KO,HEART_WT]).split()
 PRETTY_NAMES = ['{0}_{1}'.format(sample,i)  for sample in GROUP_NAMES for i in range(1, 5)]
 
 DIRS = ['mapped/','counts/','cufflinks/']
-MAPPED = ['mapped/'+f+'.sorted.bam' for f in SAMPLES]
+MAPPED = ['mapped/'+f+'.bam' for f in SAMPLES]
 GATKED = ['mapped/'+f+'.sorted.gatk.bam.bai' for f in SAMPLES]
 COUNTS = ['counts/'+f+'.tsv' for f in SAMPLES]
 CUFFED = ['cufflinks/'+f+'/transcripts.gtf' for f in SAMPLES]
@@ -63,6 +64,9 @@ ERCC = ['ercc/'+f+'.idxstats' for f in SAMPLES]
 rule all:
 	input: DIRS, CHRNAME, MAPPED, CUFFED, COUNTS, GATKED, RNASEQC_SENT, LOGS, QCED, BIGWIGS
 
+rule latest:
+	input: CUFFED
+
 rule mapped:
 	input: MAPPED
 
@@ -76,6 +80,10 @@ rule dirs:
 rule doAnything:
 	output: "testme.txt"
 	shell: "touch testme.txt"
+
+##### CLEAN #####
+rule clean:
+	shell: "rm [0-9]*.snakemake-job*"
 
 ##### TRIMMING #####
 #cutadapt will auto-gz if .gz is in the output name
@@ -136,13 +144,13 @@ rule sortbam:
 	input: "{sample}.bam"
 	output: bam="{sample}.sorted.bam", bai="{sample}.sorted.bam.bai"
 	threads: 24
-	shell: "{SORT} -t /nas/is1/tmp -s -i -o {output.bam} {input}"
+	shell: "{SORT} -t {TMPDIR} -s -i -o {output.bam} {input}"
 
 #if you ask for a sorted.bam don't look for a sorted.sam
 #ruleorder: sortbam > samtobam	
 rule samtobam:
 	input:  "{sample}.sam"
-	output: temp("{sample}.bam")
+	output: "{sample}.bam"
 	threads: 1
 	shell:  "{SAMTOOLS} view -bS {input} > {output}"
 
@@ -204,12 +212,12 @@ rule mask:
 	shell: "grep -P 'rRNA|tRNA|MT\t' {input.gtf} > {MASKFILE}"
 
 rule cufflinks:
-	input: "mapped/{sample}.sorted.bam"
-	output: gtf="cufflinks/{sample}/transcripts.gtf",iso="cufflinks/{sample}/isoforms.fpkm_tracking",genes="cufflinks/{sample}/genes.fpkm_tracking", gtf=GTFFILE, mask=MASKFILE
+	input: bam="mapped/{sample}.sorted.bam", gtf=GTFFILE, mask=MASKFILE
+	output: gtf="cufflinks/{sample}/transcripts.gtf",iso="cufflinks/{sample}/isoforms.fpkm_tracking",genes="cufflinks/{sample}/genes.fpkm_tracking"
 	threads: 8
 	shell: """
 	       mkdir -p cufflinks/{wildcards.sample}
-	       {CUFF} -p 8 -g {input.gtf} -M {input.mask} --max-bundle-length 8000000 --multi-read-correct --library-type=fr-secondstrand --output-dir cufflinks/{wildcards.sample} {input}
+	       {CUFF} -p 8 -g {input.gtf} -M {input.mask} --max-bundle-length 8000000 --multi-read-correct --library-type=fr-secondstrand --output-dir cufflinks/{wildcards.sample} {input.bam}
 	       """
 
 rule cuffreport:
@@ -357,12 +365,33 @@ layout: wide
 Most interesting might be the rRNA rate in the multisample [summary document](RNASEQC_DIR/countMetrics.html).
 > [RNA-SeQC reports](RNASEQC_DIR)
 
+### HT-Seq Counts
+> [Raw HT-Seq Counts](raw_counts.tab.txt)
+
+> [ERCC Spike-in Normalized Counts](normalized_counts.tab.txt)
+
 ### Differential expression analysis report and significantly DE gene tables
 > [diffExp.pdf](diffExp.pdf)
 
 > [muscleResults.csv](muscleResults.csv)
 
 > [heartResults.csv](heartResults.csv)
+
+### Gene Ontology terms
+GO is divided into domains of cellular component, molecular function, and biological process.
+
+The "up" tables test the model that ANT1 is overexpressing all genes in a geneset associated with a GO term relative to B6ME.
+
+This describes the tables included in this GAGE output.
+
+Column    | Description
+----------|------------
+p.geomean | geometric mean of the individual p-values from multiple single array based gene set tests
+stat.mean | mean of the individual statistics from multiple single array based gene set tests. Normally, its absoluate value measures the magnitude of gene-set level changes, and its sign indicates direction of the changes.
+p.val     | global p-value or summary of the individual p-values from multiple single array based gene set tests. This is the default p-value being used.
+q.val     | FDR q-value adjustment of the global p-value using the Benjamini & Hochberg procedure implemented in multtest package. This is the default q-value being used.
+set.size  | the effective gene set size, i.e. the number of genes included in the gene set test
+
 
 ### Using BigWig Tracks in UCSC Genome Browser
 Go to [http://genome.ucsc.edu/cgi-bin/hgCustom](http://genome.ucsc.edu/cgi-bin/hgCustom), make sure mm10 is selected, and copy-paste one or more of these into the URL field.
@@ -390,7 +419,7 @@ rule publishdata:
 	input: BIGWIGS, QCED, "diffExp.pdf"
 	shell:
 		"""
-		rsync -v --update --rsh=ssh -r diffExp.pdf muscleResults.csv heartResults.csv fastqc tracks RNASEQC_DIR {MITOMAP}
+		rsync -v --update --rsh=ssh -r diffExp.pdf muscleResults.csv heartResults.csv fastqc tracks raw_counts.tab.txt normalized_counts.tab.txt RNASEQC_DIR GO*tab.txt {MITOMAP}
 		"""
 
 def get_head_hash():

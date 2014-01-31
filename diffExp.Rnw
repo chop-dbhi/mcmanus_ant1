@@ -53,7 +53,7 @@ library(xtable)
 source("/nas/is1/leipzig/ganguly/src/R/concat.R")
 library(org.Mm.eg.db)
 library("biomaRt")
-
+library("gage")
 sessInfo<-sessionInfo()
 
 
@@ -130,6 +130,9 @@ ercc.counts<-read.table("ercc.counts",col.names=c("sample","count"),stringsAsFac
 #these better be in the same order
 stopifnot(samples==ercc.counts$sample)
 sizeFactors(cds)<-ercc.counts$count
+
+write.table(counts(cds, normalized=FALSE),file="raw_counts.tab.txt",sep="\t",quote=FALSE)
+write.table(counts(cds, normalized=TRUE),file="normalized_counts.tab.txt",sep="\t",quote=FALSE)
 
 #not going to estimate if using ercc
 #cds <- estimateSizeFactors( cds )
@@ -300,6 +303,60 @@ print(q)
 <<euclidheat,fig=TRUE,echo=F>>=
 dists<-dist(t(counts(cds)))
 heatmap( as.matrix( dists ))
+@
+
+\pagebreak
+\subsection{GO enrichment}
+<<go,fig=TRUE,echo=F>>=
+cnts.norm<-data.frame(counts(cds, normalized=TRUE))
+cnts.names<-names(cnts.norm)
+
+library("gageData")
+library("gage")
+data(go.subs.mm)
+data(go.sets.mm)
+
+mart <- useMart(biomart = "ensembl", dataset = "mmusculus_gene_ensembl")
+go_results <- getBM(attributes = c("ensembl_gene_id","go_id"),
+                 filters = "ensembl_gene_id", values = row.names(cnts.norm),
+                 mart = mart)
+entrez_results <- getBM(attributes = c("ensembl_gene_id","entrezgene"),
+                 filters = "ensembl_gene_id", values = row.names(cnts.norm),
+                 mart = mart)
+
+cnts.norm$entrez<-entrez_results[match(row.names(cnts.norm),entrez_results$ensembl_gene_id),"entrezgene"]
+
+entrez.norm<-subset(cnts.norm,!is.na(entrez))
+
+cnts.sums<-ddply(entrez.norm,.(entrez),function(d) colSums(d[cnts.names]))
+
+cnts.matrix<-as.matrix(cnts.sums[,-1])
+rownames(cnts.matrix)<-cnts.sums$entrez
+
+# go.subs.hs is a named list of three elements: "BP", "CC" and "MF", corresponding to biological
+# process, cellular component and molecular function subtrees.
+go.mf.mm<-go.sets.mm[go.subs.mm$MF]
+go.cc.mm<-go.sets.mm[go.subs.mm$CC]
+go.bp.mm<-go.sets.mm[go.subs.mm$BP]
+
+writeGoTables<-function(tissue,category,geneSet,refCols,altCols){
+  gage_results <- gage(cnts.matrix, gsets = geneSet, ref = refCols, samp = altCols,  compare ="unpaired", same.dir=TRUE)
+  write.table(gage_results$greater,file=paste("GO",tissue,"ant1",category,"up.tab.txt",sep="."),sep="\t",quote=FALSE)
+  write.table(gage_results$greater,file=paste("GO",tissue,"ant1",category,"down.tab.txt",sep="."),sep="\t",quote=FALSE)
+}
+
+refMuscleCols<-5:8
+altMuscleCols<-1:4
+refHeartCols<-13:16
+altHeartCols<-9:12
+
+writeGoTables("muscle","molecular_function",go.mf.mm,refMuscleCols,altMuscleCols)
+writeGoTables("muscle","cellular_component",go.cc.mm,refMuscleCols,altMuscleCols)
+writeGoTables("muscle","biological_process",go.bp.mm,refMuscleCols,altMuscleCols)
+
+writeGoTables("heart","molecular_function",go.mf.mm,refHeartCols,altHeartCols)
+writeGoTables("heart","cellular_component",go.cc.mm,refHeartCols,altHeartCols)
+writeGoTables("heart","biological_process",go.bp.mm,refHeartCols,altHeartCols)
 @
 
 \pagebreak
