@@ -41,7 +41,11 @@ layout: wide
 #### RNA-SeQC Output
 [RNA-SeQC](http://bioinformatics.oxfordjournals.org/content/28/11/1530.long) produces extensive metrics for RNA-Seq runs. Not all of the sections will apply to the Ion Proton protocol.
 Most interesting might be the rRNA rate in the multisample [summary document](RNASEQC_DIR/countMetrics.html).
-> [RNA-SeQC reports](RNASEQC_DIR)
+> [RNA-SeQC home](RNASEQC_INDEX)
+
+> [RNA-SeQC reports](RNASEQC_DIR+'countMetrics.html')
+
+> [RNA-SeQC reports](RNASEQC_DIR+'report.html')
 
 ### HT-Seq Counts
 > [Raw HT-Seq Counts](raw_counts.tab.txt)
@@ -54,6 +58,45 @@ Most interesting might be the rRNA rate in the multisample [summary document](RN
 > [muscleResults.csv](muscleResults.csv)
 
 > [heartResults.csv](heartResults.csv)
+
+### Gene Ontology Enrichment
+GO is divided into domains of cellular component, molecular function, and biological process.
+
+The "up" and "down" tables test the model that ANT1 is overexpressing/underexpressing all genes in a geneset associated with a GO term relative to B6ME. The same GO terms are in both files.
+
+This describes the tables included in this GAGE output.
+
+Column    | Description
+----------|------------
+p.geomean | geometric mean of the individual p-values from multiple single array based gene set tests
+stat.mean | mean of the individual statistics from multiple single array based gene set tests. Normally, its absoluate value measures the magnitude of gene-set level changes, and its sign indicates direction of the changes.
+p.val     | global p-value or summary of the individual p-values from multiple single array based gene set tests. This is the default p-value being used.
+q.val     | FDR q-value adjustment of the global p-value using the Benjamini & Hochberg procedure implemented in multtest package. This is the default q-value being used.
+set.size  | the effective gene set size, i.e. the number of genes included in the gene set test
+>[GAGE/GO.heart.ant1.biological_process.up.csv](GAGE/GO.heart.ant1.biological_process.up.csv)
+
+>[GAGE/GO.heart.ant1.biological_process.down.csv](GAGE/GO.heart.ant1.biological_process.down.csv)
+
+>[GAGE/GO.heart.ant1.cellular_component.up.csv](GAGE/GO.heart.ant1.cellular_component.up.csv)
+
+>[GAGE/GO.heart.ant1.cellular_component.down.csv](GAGE/GO.heart.ant1.cellular_component.down.csv)
+
+>[GAGE/GO.heart.ant1.molecular_function.up.csv](GAGE/GO.heart.ant1.molecular_function.up.csv)
+
+>[GAGE/GO.heart.ant1.molecular_function.down.csv](GAGE/GO.heart.ant1.molecular_function.down.csv)
+
+>[GAGE/GO.muscle.ant1.biological_process.up.csv](GAGE/GO.muscle.ant1.biological_process.up.csv)
+
+>[GAGE/GO.muscle.ant1.biological_process.down.csv](GAGE/GO.muscle.ant1.biological_process.down.csv)
+
+>[GAGE/GO.muscle.ant1.cellular_component.up.csv](GAGE/GO.muscle.ant1.cellular_component.up.csv)
+
+>[GAGE/GO.muscle.ant1.cellular_component.down.csv](GAGE/GO.muscle.ant1.cellular_component.down.csv)
+
+>[GAGE/GO.muscle.ant1.molecular_function.up.csv](GAGE/GO.muscle.ant1.molecular_function.up.csv)
+
+>[GAGE/GO.muscle.ant1.molecular_function.down.csv](GAGE/GO.muscle.ant1.molecular_function.down.csv)
+
 
 ### Using BigWig Tracks in UCSC Genome Browser
 Go to [http://genome.ucsc.edu/cgi-bin/hgCustom](http://genome.ucsc.edu/cgi-bin/hgCustom), make sure mm10 is selected, and copy-paste one or more of these into the URL field.
@@ -95,4 +138,6 @@ Code used to generate this analysis is located here [http://github.research.chop
 
 ### Git hash
 This should match the hash index on the last page of your report.
-```f73d35d9f6c603a1130688dc81f53157b51f5616```
+```8c25582ea529725613edf2705fe39b826de3ffaf```
+
+Last modified ```2014-02-03 06:34:09```

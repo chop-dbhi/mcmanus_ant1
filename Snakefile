@@ -2,7 +2,7 @@ import glob
 from snakemake.utils import R
 import re
 import socket
-
+from time import gmtime, strftime
 
 MITOMAP =       "leipzigj@rescommap01.research.chop.edu:/var/www/html/martin-rna-seq/"
 REFDIR =        "refs/Mus_musculus/Ensembl/GRCm38/"
@@ -56,13 +56,15 @@ EXPRED = ['express/reports/'+f+'/results.xprs' for f in SAMPLES]
 LOGS = 'starlogs.parsed.txt'
 SAMPLEFILE = "samplefile.rnaseqc.txt"
 RNASEQC_DIR = "RNASEQC_DIR/"
-RNASEQC_SENT = RNASEQC_DIR+"index.html"
+RNASEQC_INDEX = RNASEQC_DIR+"index.html"
 BIGWIGS = ['tracks/'+f+'.bw' for f in SAMPLES]
 QCED = ['fastqc/'+f+'.trimmed_fastqc.zip' for f in SAMPLES]
 ERCC = ['ercc/'+f+'.idxstats' for f in SAMPLES]
+GO_DOMAINS = ['biological_process','cellular_component','molecular_function']
+GAGE_GO_FILES = ['GAGE/GO.'+tissue+'.ant1.'+domain+'.'+direction+'.csv' for tissue in ['heart','muscle'] for domain in GO_DOMAINS for direction in ['up','down']]
 
 rule all:
-	input: DIRS, CHRNAME, MAPPED, CUFFED, COUNTS, GATKED, RNASEQC_SENT, LOGS, QCED, BIGWIGS
+	input: DIRS, CHRNAME, MAPPED, CUFFED, COUNTS, GATKED, RNASEQC_INDEX, LOGS, QCED, BIGWIGS
 
 rule latest:
 	input: CUFFED
@@ -202,7 +204,7 @@ rule dict:
 #samplefile.rnaseqc.txt was made by hand so sue me
 rule rnaseqc:
 	input: sample=SAMPLEFILE, gatked=GATKED, rnaseqc=RNASEQC, rnaseqc_dir=RNASEQC_DIR, ref=FASTAREF, gtf=PRIM_GTF, rna=RRNA
-	output: RNASEQC_SENT
+	output: RNASEQC_INDEX
 	shell: "java -jar {input.rnaseqc} -o {input.rnaseqc_dir} -r {input.ref} -s {input.sample} -t {input.gtf} -rRNA {input.rna}"
 
 ##### TX Quantification: Cufflinks #####
@@ -286,7 +288,7 @@ rule htseq:
 ##### Report #####
 rule report:
 	input: COUNTS
-	output: "diffExp.tex"
+	output: "diffExp.tex", GAGE_GO_FILES
 	run:
 		R("""
 		MUSCLE_KO<-strsplit("{MUSCLE_KO}", " ");
@@ -345,7 +347,7 @@ COLORS = """
 """.split()
 
 rule siteindex:
-	input: BIGWIGS, "diffExp.pdf", QCED, RNASEQC_SENT
+	input: "Snakefile",BIGWIGS, "diffExp.pdf", QCED, RNASEQC_INDEX
 	output: "site/index.md"
 	run:
 		with open(output[0], 'w') as outfile:
@@ -363,7 +365,11 @@ layout: wide
 #### RNA-SeQC Output
 [RNA-SeQC](http://bioinformatics.oxfordjournals.org/content/28/11/1530.long) produces extensive metrics for RNA-Seq runs. Not all of the sections will apply to the Ion Proton protocol.
 Most interesting might be the rRNA rate in the multisample [summary document](RNASEQC_DIR/countMetrics.html).
-> [RNA-SeQC reports](RNASEQC_DIR)
+> [RNA-SeQC home](RNASEQC_INDEX)
+
+> [RNA-SeQC reports](RNASEQC_DIR+'countMetrics.html')
+
+> [RNA-SeQC reports](RNASEQC_DIR+'report.html')
 
 ### HT-Seq Counts
 > [Raw HT-Seq Counts](raw_counts.tab.txt)
@@ -377,10 +383,10 @@ Most interesting might be the rRNA rate in the multisample [summary document](RN
 
 > [heartResults.csv](heartResults.csv)
 
-### Gene Ontology terms
+### Gene Ontology Enrichment
 GO is divided into domains of cellular component, molecular function, and biological process.
 
-The "up" tables test the model that ANT1 is overexpressing all genes in a geneset associated with a GO term relative to B6ME.
+The "up" and "down" tables test the model that ANT1 is overexpressing/underexpressing all genes in a geneset associated with a GO term relative to B6ME. The same GO terms are in both files.
 
 This describes the tables included in this GAGE output.
 
@@ -391,8 +397,10 @@ stat.mean | mean of the individual statistics from multiple single array based g
 p.val     | global p-value or summary of the individual p-values from multiple single array based gene set tests. This is the default p-value being used.
 q.val     | FDR q-value adjustment of the global p-value using the Benjamini & Hochberg procedure implemented in multtest package. This is the default q-value being used.
 set.size  | the effective gene set size, i.e. the number of genes included in the gene set test
-
-
+""")
+			for f in GAGE_GO_FILES:
+				outfile.write(">[{0}]({0})\n\n".format(f))
+			outfile.write("""
 ### Using BigWig Tracks in UCSC Genome Browser
 Go to [http://genome.ucsc.edu/cgi-bin/hgCustom](http://genome.ucsc.edu/cgi-bin/hgCustom), make sure mm10 is selected, and copy-paste one or more of these into the URL field.
 """)
@@ -405,7 +413,9 @@ Code used to generate this analysis is located here [http://github.research.chop
 ### Git hash
 This should match the hash index on the last page of your report.
 """)
-			outfile.write('```{0}```'.format(get_head_hash()))
+			outfile.write('```{0}```\n\n'.format(get_head_hash()))
+			outfile.write('Last modified ```{0}```'.format(strftime("%Y-%m-%d %H:%M:%S")))
+
 
 rule publishsite:
 	input: "site/index.md"
@@ -416,10 +426,10 @@ rule publishsite:
 		"""
 
 rule publishdata:
-	input: BIGWIGS, QCED, "diffExp.pdf"
+	input: BIGWIGS, QCED, "diffExp.pdf", GAGE_GO_FILES
 	shell:
 		"""
-		rsync -v --update --rsh=ssh -r diffExp.pdf muscleResults.csv heartResults.csv fastqc tracks raw_counts.tab.txt normalized_counts.tab.txt RNASEQC_DIR GO*tab.txt {MITOMAP}
+		rsync -v --update --rsh=ssh -r diffExp.pdf muscleResults.csv heartResults.csv fastqc tracks raw_counts.tab.txt normalized_counts.tab.txt RNASEQC_DIR GAGE {MITOMAP}
 		"""
 
 def get_head_hash():
