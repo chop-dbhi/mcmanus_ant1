@@ -62,7 +62,7 @@ QCED = ['fastqc/'+f+'.trimmed_fastqc.zip' for f in SAMPLES]
 ERCC = ['ercc/'+f+'.idxstats' for f in SAMPLES]
 GO_DOMAINS = ['biological_process','cellular_component','molecular_function']
 GAGE_GO_FILES = ['GAGE/GO.'+tissue+'.ant1.'+domain+'.'+direction+'.csv' for tissue in ['heart','muscle'] for domain in GO_DOMAINS for direction in ['up','down']]
-
+GAGE_KEGG_FILES = ['GAGE/KEGG.'+tissue+'.ant1.signaling_or_metabolism_pathways.both.csv' for tissue in ['heart','muscle']]
 rule all:
 	input: DIRS, CHRNAME, MAPPED, CUFFED, COUNTS, GATKED, RNASEQC_INDEX, LOGS, QCED, BIGWIGS
 
@@ -288,7 +288,7 @@ rule htseq:
 ##### Report #####
 rule report:
 	input: COUNTS
-	output: "diffExp.tex", GAGE_GO_FILES
+	output: "diffExp.tex", "cds.df.RData", "muscleResults.csv", "heartResults.csv"
 	run:
 		R("""
 		MUSCLE_KO<-strsplit("{MUSCLE_KO}", " ");
@@ -296,6 +296,22 @@ rule report:
 		HEART_KO<-strsplit("{HEART_KO}", " ");
 		HEART_WT<-strsplit("{HEART_WT}", " ");
 		Sweave("diffExp.Rnw")
+		""")
+
+rule gage:
+	input: "cds.df.RData"
+	output: GAGE_GO_FILES, GAGE_KEGG_FILES
+	run:
+		R("""
+		source("gage.R")
+		""")
+
+rule topgo:
+	input: "topGO.Rnw", "muscleResults.csv", "heartResults.csv"
+	output: "topGO.tex"
+	run:
+		R("""
+		Sweave("topGO.Rnw")
 		""")
 
 #we do it twice for the TOC
@@ -347,7 +363,7 @@ COLORS = """
 """.split()
 
 rule siteindex:
-	input: "Snakefile",BIGWIGS, "diffExp.pdf", QCED, RNASEQC_INDEX
+	input: "Snakefile",BIGWIGS, "diffExp.pdf", "topGO.pdf", QCED, RNASEQC_INDEX
 	output: "site/index.md"
 	run:
 		with open(output[0], 'w') as outfile:
@@ -383,7 +399,10 @@ Most interesting might be the rRNA rate in the multisample [summary document](RN
 
 > [heartResults.csv](heartResults.csv)
 
-### Gene Ontology Enrichment
+### GAGE
+GAGE was used to generate GO and KEGG pathway analysis using a ranked list analysis (read counts are taken into consideration)
+
+#### Gene Ontology with GAGE
 GO is divided into domains of cellular component, molecular function, and biological process.
 
 The "up" and "down" tables test the model that ANT1 is overexpressing/underexpressing all genes in a geneset associated with a GO term relative to B6ME. The same GO terms are in both files.
@@ -399,8 +418,18 @@ q.val     | FDR q-value adjustment of the global p-value using the Benjamini & H
 set.size  | the effective gene set size, i.e. the number of genes included in the gene set test
 """)
 			for f in GAGE_GO_FILES:
+			    outfile.write(">[{0}]({0})\n\n".format(f))
+			outfile.write("""
+###@ KEGG Pathway Enrichment with GAGE
+The GAGE KEGG analysis does not assume expression is in one direction.
+""")
+			for f in GAGE_KEGG_FILES:
 				outfile.write(">[{0}]({0})\n\n".format(f))
 			outfile.write("""
+### TopGO Analysis
+TopGO provides additional tools for exploring GO enrichment.
+> [topGO.pdf](topGO.pdf)
+
 ### Using BigWig Tracks in UCSC Genome Browser
 Go to [http://genome.ucsc.edu/cgi-bin/hgCustom](http://genome.ucsc.edu/cgi-bin/hgCustom), make sure mm10 is selected, and copy-paste one or more of these into the URL field.
 """)
@@ -426,10 +455,10 @@ rule publishsite:
 		"""
 
 rule publishdata:
-	input: BIGWIGS, QCED, "diffExp.pdf", GAGE_GO_FILES
+	input: BIGWIGS, QCED, GAGE_GO_FILES, GAGE_KEGG_FILES, "diffExp.pdf", "topGO.pdf"
 	shell:
 		"""
-		rsync -v --update --rsh=ssh -r diffExp.pdf muscleResults.csv heartResults.csv fastqc tracks raw_counts.tab.txt normalized_counts.tab.txt RNASEQC_DIR GAGE {MITOMAP}
+		rsync -v --update --rsh=ssh -r diffExp.pdf topGO.pdf muscleResults.csv heartResults.csv fastqc tracks raw_counts.tab.txt normalized_counts.tab.txt RNASEQC_DIR GAGE {MITOMAP}
 		"""
 
 def get_head_hash():

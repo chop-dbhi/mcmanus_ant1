@@ -53,9 +53,7 @@ library(xtable)
 source("/nas/is1/leipzig/ganguly/src/R/concat.R")
 library(org.Mm.eg.db)
 library("biomaRt")
-library("gageData")
-library("gage")
-library("topGO")
+
 sessInfo<-sessionInfo()
 
 
@@ -147,7 +145,7 @@ sharingMode<-'maximum'
 method<-'per-condition'
 fits<-'local'
 cds <- estimateDispersions( cds , fitType="local", method=method, sharingMode=sharingMode)
-
+save(cds,file="cds.df.RData",compress=TRUE)
 myPval<-.01
 @
 <<conductTest,echo=FALSE,results=hide>>=
@@ -171,7 +169,16 @@ Below are results of the STAR mapping. Conditions are M for Muscle, H for Heart,
 
 <<star,results=tex,echo=F>>=
 # Use "d" (for integers), "f", "e", "E", "g", "G", "fg" (for reals), or "s" (for strings). "f" gives numbers in the usual xxx.xxx format; "e" and "E" give n.ddde+nn or n.dddE+nn (scientific format); "g" and "G" put x[i] into scientific format only if it saves space to do so. "fg" uses fixed format as "f", but digits as number of significant digits
-
+# \tiny
+# \scriptsize
+# \footnotesize
+# \small
+# \normalsize
+# \large
+# \Large
+# \LARGE
+# \huge
+# \Huge
 myXtableStar<-xtable(starstats,type=tex,caption=paste("STAR mapping results"),display=c('s','s','d','s','s','s'))
 
 print(myXtableStar,include.rownames=FALSE, tabular.environment = "longtable", floating = FALSE, size="\\footnotesize")
@@ -307,109 +314,8 @@ dists<-dist(t(counts(cds)))
 heatmap( as.matrix( dists ))
 @
 
-\pagebreak
-\subsection{GO enrichment}
-\subsubsection{GAGE}
-GAGE was used to generate GO and KEGG pathway analysis using a ranked list analysis (gene counts are taken into consideration)
 
-<<gage,results=hide,echo=F>>=
-cnts.norm<-data.frame(counts(cds, normalized=TRUE))
-cnts.names<-names(cnts.norm)
 
-data(go.subs.mm)
-data(go.sets.mm)
-
-mart <- useMart(biomart = "ensembl", dataset = "mmusculus_gene_ensembl")
-go_results <- getBM(attributes = c("ensembl_gene_id","go_id"),
-                 filters = "ensembl_gene_id", values = row.names(cnts.norm),
-                 mart = mart)
-entrez_results <- getBM(attributes = c("ensembl_gene_id","entrezgene"),
-                 filters = "ensembl_gene_id", values = row.names(cnts.norm),
-                 mart = mart)
-
-cnts.norm$entrez<-entrez_results[match(row.names(cnts.norm),entrez_results$ensembl_gene_id),"entrezgene"]
-
-entrez.norm<-subset(cnts.norm,!is.na(entrez))
-
-cnts.sums<-ddply(entrez.norm,.(entrez),function(d) colSums(d[cnts.names]))
-
-cnts.matrix<-as.matrix(cnts.sums[,-1])
-rownames(cnts.matrix)<-cnts.sums$entrez
-
-# go.subs.hs is a named list of three elements: "BP", "CC" and "MF", corresponding to biological
-# process, cellular component and molecular function subtrees.
-go.mf.mm<-go.sets.mm[go.subs.mm$MF]
-go.cc.mm<-go.sets.mm[go.subs.mm$CC]
-go.bp.mm<-go.sets.mm[go.subs.mm$BP]
-
-#write the csv files and return the gage results for graphing
-writeGoTables<-function(tissue,category,geneSet,refCols,altCols){
-  gage_results <- gage(cnts.matrix, gsets = geneSet, ref = refCols, samp = altCols,  compare ="unpaired", same.dir=TRUE)
-  write.csv(gage_results$greater,file=paste("GAGE/GO",tissue,"ant1",category,"up.csv",sep="."),quote=FALSE)
-  write.csv(gage_results$less,file=paste("GAGE/GO",tissue,"ant1",category,"down.csv",sep="."),quote=FALSE)
-  greater<-data.frame(gage_results$greater)
-  greater$term<-row.names(greater)
-  return(subset(greater,p.val<0.05))
-}
-
-refMuscleCols<-5:8
-altMuscleCols<-1:4
-refHeartCols<-13:16
-altHeartCols<-9:12
-
-go.mf.muscle<-writeGoTables("muscle","molecular_function",go.mf.mm,refMuscleCols,altMuscleCols)
-go.cc.muscle<-writeGoTables("muscle","cellular_component",go.cc.mm,refMuscleCols,altMuscleCols)
-go.bp.muscle<-writeGoTables("muscle","biological_process",go.bp.mm,refMuscleCols,altMuscleCols)
-
-go.mf.heart<-writeGoTables("heart","molecular_function",go.mf.mm,refHeartCols,altHeartCols)
-go.cc.heart<-writeGoTables("heart","cellular_component",go.cc.mm,refHeartCols,altHeartCols)
-go.bp.heart<-writeGoTables("heart","biological_process",go.bp.mm,refHeartCols,altHeartCols)
-
-@
-\subsubsection{TopGO}
-TopGO provides additional tools for exploring enrichment.
-
-The classicFisher is a filtered list approach - enrichment is strictly based on counts of genes associated with the GO terms.
-
-Kolmogorov-Smirnov test is supposed to use differential p-values to weight enrichment. The elim method was design to be more conservative then the classic method.
-
-<<topgo,results=tex,echo=F>>=
-#what is the point of the gene universe?
-#i have 14642 genes from the rna-seq already
-#xx <- annFUN.org("BP", mapping = "org.Mm.eg.db", ID = "Ensembl")
-#allGenes <- unique(unlist(xx))
-#sigRes<-subset(res,padj<=0.01)
-#sigGenes<-sigRes$id
-#geneList <- factor(as.integer(allGenes %in% sigGenes))
-
-getSigOrNot<-function (allScore) 
-{
-    return(allScore < 0.01)
-}
-
-#requires csv with id field 
-#print latex of go summary table
-#return GOdata object, table object
-getGO<-function(tissue, ontology){
-  res<-read.csv(concat(tissue,"Results.csv"))
-  #NA's will screw up the KS test
-  res<-subset(res,!is.na(padj))
-  geneList<-res$pval
-  names(geneList)<-res$id
-  GOdata <- new("topGOdata", ontology = ontology, allGenes = geneList, geneSel = getSigOrNot, description = "Test", annot = annFUN.org, mapping = "org.Mm.eg.db", ID = "Ensembl")
-  resultFisher <- runTest(GOdata, algorithm = "classic", statistic = "fisher")
-  resultKS <- runTest(GOdata, algorithm = "classic", statistic = "ks", scoreOrder = "increasing")
-  resultKS.elim <- runTest(GOdata, algorithm = "elim", statistic = "ks", scoreOrder = "increasing")
-  genTab <- GenTable(GOdata, classicFisher = resultFisher,
-                     classicKS = resultKS, elimKS = resultKS.elim, orderBy = "elimKS", ranksOf = "classicFisher", topNodes = 10)
-  tissueGO<-xtable(genTab,type=tex,caption=paste("TopGO top 10 terms of ",tissue," (both up/downregulated)",sep=""),digits=3,display=c('d','s','s','d','d','f','d','g','g','g'))
-  print(tissueGO,include.rownames=FALSE, tabular.environment = "longtable", floating = FALSE, size="\\footnotesize")
-
-  return(list(godata=GOdata,gentab=genTab))
-}
-muscle<-getGO("muscle")
-heart<-getGO("heart")
-@
 \pagebreak
 The R session information (including the OS info, R version and all
 packages used):

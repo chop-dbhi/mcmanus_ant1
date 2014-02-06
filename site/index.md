@@ -59,7 +59,10 @@ Most interesting might be the rRNA rate in the multisample [summary document](RN
 
 > [heartResults.csv](heartResults.csv)
 
-### Gene Ontology Enrichment
+### GAGE
+GAGE was used to generate GO and KEGG pathway analysis using a ranked list analysis (read counts are taken into consideration)
+
+#### Gene Ontology with GAGE
 GO is divided into domains of cellular component, molecular function, and biological process.
 
 The "up" and "down" tables test the model that ANT1 is overexpressing/underexpressing all genes in a geneset associated with a GO term relative to B6ME. The same GO terms are in both files.
@@ -97,6 +100,17 @@ set.size  | the effective gene set size, i.e. the number of genes included in th
 
 >[GAGE/GO.muscle.ant1.molecular_function.down.csv](GAGE/GO.muscle.ant1.molecular_function.down.csv)
 
+
+###@ KEGG Pathway Enrichment with GAGE
+The GAGE KEGG analysis does not assume expression is in one direction.
+>[GAGE/KEGG.heart.ant1.signaling_or_metabolism_pathways.both.csv](GAGE/KEGG.heart.ant1.signaling_or_metabolism_pathways.both.csv)
+
+>[GAGE/KEGG.muscle.ant1.signaling_or_metabolism_pathways.both.csv](GAGE/KEGG.muscle.ant1.signaling_or_metabolism_pathways.both.csv)
+
+
+### TopGO Analysis
+TopGO provides additional tools for exploring GO enrichment.
+> [topGO.pdf](topGO.pdf)
 
 ### Using BigWig Tracks in UCSC Genome Browser
 Go to [http://genome.ucsc.edu/cgi-bin/hgCustom](http://genome.ucsc.edu/cgi-bin/hgCustom), make sure mm10 is selected, and copy-paste one or more of these into the URL field.
@@ -138,6 +152,6 @@ Code used to generate this analysis is located here [http://github.research.chop
 
 ### Git hash
 This should match the hash index on the last page of your report.
-```8c25582ea529725613edf2705fe39b826de3ffaf```
+```9895106920549a12b27ea5ed073009a586bbdb4a```
 
-Last modified ```2014-02-03 06:34:09```
+Last modified ```2014-02-06 08:20:44```
