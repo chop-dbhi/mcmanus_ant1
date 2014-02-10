@@ -38,10 +38,10 @@ MUSCLE_KO = "IonXpressRNA_002.R_2013_11_26_13_55_09_user_1PR-8-RNA-Seq_whole_tra
 MUSCLE_WT = "IonXpressRNA_001.R_2013_11_26_13_55_09_user_1PR-8-RNA-Seq_whole_transcriptome IonXpressRNA_003.R_2013_11_26_20_48_53_user_1PR-9-RNA-Seq_whole_transcriptome IonXpressRNA_005.R_2013_12_04_09_37_33_1PR-10-RNA-Seq_whole_transcriptome_76303 IonXpressRNA_007.R_2013_12_06_12_45_12_user_1PR-11-RNA-Seq_whole_transcriptome"
 
 #ANT1 evens
-HEART_KO = "IonXpressRNA_010.R_2013_12_19_16_11_21_user_1PR-13-RNA-Seq_whole_transcriptome  IonXpressRNA_012.R_2013_12_18_20_25_40_user_1PR-12-RNA-Seq_whole_transcriptome  IonXpressRNA_014.R_2013_12_20_12_50_23_user_1PR-14-RNA-Seq_whole_transcriptome IonXpressRNA_016.R_2013_12_21_20_34_59_user_1PR-15-RNA-Seq_whole_transcriptome"
+HEART_KO = "IonXpressRNA_010.R_2013_12_19_16_11_21_user_1PR-13-RNA-Seq_whole_transcriptome IonXpressRNA_012.R_2013_12_18_20_25_40_user_1PR-12-RNA-Seq_whole_transcriptome IonXpressRNA_014.R_2013_12_20_12_50_23_user_1PR-14-RNA-Seq_whole_transcriptome IonXpressRNA_016.R_2013_12_21_20_34_59_user_1PR-15-RNA-Seq_whole_transcriptome"
 
 #B6ME odds
-HEART_WT = "IonXpressRNA_009.R_2013_12_19_16_11_21_user_1PR-13-RNA-Seq_whole_transcriptome IonXpressRNA_011.R_2013_12_18_20_25_40_user_1PR-12-RNA-Seq_whole_transcriptome  IonXpressRNA_013.R_2013_12_20_12_50_23_user_1PR-14-RNA-Seq_whole_transcriptome  IonXpressRNA_015.R_2013_12_21_20_34_59_user_1PR-15-RNA-Seq_whole_transcriptome"
+HEART_WT = "IonXpressRNA_009.R_2013_12_19_16_11_21_user_1PR-13-RNA-Seq_whole_transcriptome IonXpressRNA_011.R_2013_12_18_20_25_40_user_1PR-12-RNA-Seq_whole_transcriptome IonXpressRNA_013.R_2013_12_20_12_50_23_user_1PR-14-RNA-Seq_whole_transcriptome IonXpressRNA_015.R_2013_12_21_20_34_59_user_1PR-15-RNA-Seq_whole_transcriptome"
 
 GROUP_NAMES = 'MUSCLE_KO MUSCLE_WT HEART_KO HEART_WT'.split()
 SAMPLES = ' '.join([MUSCLE_KO,MUSCLE_WT,HEART_KO,HEART_WT]).split()
@@ -284,13 +284,16 @@ rule report:
 		RAW_COUNTS<-"{output.raw}"
 		NORM_COUNTS<-"{output.norm}"
 		CDS_FILE<-"{output.cds}"
-		HEART_RES<-"{input.hr}"
-		MUSCLE_RES<-"{input.mr}"
+		HEART_RES<-"{output.hr}"
+		MUSCLE_RES<-"{output.mr}"
 				
 		MUSCLE_KO<-unlist(strsplit("{MUSCLE_KO}", " "));
 		MUSCLE_WT<-unlist(strsplit("{MUSCLE_WT}", " "));
 		HEART_KO<-unlist(strsplit("{HEART_KO}", " "));
 		HEART_WT<-unlist(strsplit("{HEART_WT}", " "));
+		
+		samples<-c(MUSCLE_KO,MUSCLE_WT,HEART_KO,HEART_WT)
+
 		Sweave("{input.source}",output="{output.tex}")
 		""")
 
@@ -304,14 +307,14 @@ rule gage:
 
 rule submodule_update:
     run:
-        """git submodule update"""
+        """git submodule foreach git pull origin master"""
 
 rule topgo_data:
 	input: results="{tissue}Results.csv", source="common/rna-seq/topGO.R"
 	output: "{tissue}GO.RData"
 	run:
 		R("""
-			source("topGO.R")
+			source("{input.source}")
 			res<-read.csv("{input.results}")
 			de<-hot<-cold<-list()
 			for(ont in c('BP','CC','MF')){{
@@ -324,11 +327,11 @@ rule topgo_data:
 		""")
 
 rule topgo_report:
-	input: "topGO.Rnw", "muscleGO.RData", "heartGO.RData"
-	output: "topGO.tex"
+	input: source="topGO.Rnw", mg="muscleGO.RData", hg="heartGO.RData"
+	output: tex="topGO.tex"
 	run:
 		R("""
-		Sweave("topGO.Rnw")
+		Sweave("{input.source}",output="{output.tex}")
 		""")
 
 #we do it twice for the TOC

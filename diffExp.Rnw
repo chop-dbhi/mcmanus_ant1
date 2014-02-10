@@ -64,12 +64,11 @@ fetchCounts<-function(sampleName){
   return(counts[,-1,drop=FALSE])
 }
 
-samples<-c(MUSCLE_KO,MUSCLE_WT,HEART_KO,HEART_WT)
 counts <- Reduce(function(a,b){
         ans <- merge(a,b,by="row.names",all=T)
         row.names(ans) <- ans[,"Row.names"]
         ans[,!names(ans) %in% "Row.names"]
-        }, lapply(samples,fetchCounts))
+        }, sapply(samples,fetchCounts))
 
 counts<-counts[!(rownames(counts) %in% c("alignment_not_unique","ambiguous")),]
 names(counts)<-c(concat('MUS_ANT_',seq(1:4)),concat('MUS_B6ME_',seq(1:4)),concat('HRT_ANT_',seq(1:4)),concat('HRT_B6ME_',seq(1:4)))
