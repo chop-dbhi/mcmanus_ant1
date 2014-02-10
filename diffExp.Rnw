@@ -46,7 +46,6 @@ library(Biostrings)
 library(stringr)
 library(plyr)
 library(reshape)
-#library("edgeR")
 library("DESeq")
 library(ggplot2)
 library(xtable)
@@ -56,29 +55,14 @@ library("biomaRt")
 
 sessInfo<-sessionInfo()
 
-
-
 aligner<-"STAR"
 reference<-"Ensembl/GRCm38"
-
-
-
 
 fetchCounts<-function(sampleName){
   counts<-read.table(concat("counts/",sampleName,".tsv"),col.names=c("txid",sampleName))
   row.names(counts)<-counts$txid
   return(counts[,-1,drop=FALSE])
 }
-MUSCLE_KO = unlist(strsplit("IonXpressRNA_002.R_2013_11_26_13_55_09_user_1PR-8-RNA-Seq_whole_transcriptome IonXpressRNA_004.R_2013_11_26_20_48_53_user_1PR-9-RNA-Seq_whole_transcriptome IonXpressRNA_006.R_2013_12_04_09_37_33_1PR-10-RNA-Seq_whole_transcriptome_76303 IonXpressRNA_008.R_2013_12_06_12_45_12_user_1PR-11-RNA-Seq_whole_transcriptome",' '))
-
-#B6ME odds
-MUSCLE_WT = unlist(strsplit("IonXpressRNA_001.R_2013_11_26_13_55_09_user_1PR-8-RNA-Seq_whole_transcriptome IonXpressRNA_003.R_2013_11_26_20_48_53_user_1PR-9-RNA-Seq_whole_transcriptome IonXpressRNA_005.R_2013_12_04_09_37_33_1PR-10-RNA-Seq_whole_transcriptome_76303 IonXpressRNA_007.R_2013_12_06_12_45_12_user_1PR-11-RNA-Seq_whole_transcriptome",' '))
-
-#ANT1 evens
-HEART_KO = unlist(strsplit("IonXpressRNA_010.R_2013_12_19_16_11_21_user_1PR-13-RNA-Seq_whole_transcriptome IonXpressRNA_012.R_2013_12_18_20_25_40_user_1PR-12-RNA-Seq_whole_transcriptome IonXpressRNA_014.R_2013_12_20_12_50_23_user_1PR-14-RNA-Seq_whole_transcriptome IonXpressRNA_016.R_2013_12_21_20_34_59_user_1PR-15-RNA-Seq_whole_transcriptome",' '))
-
-#B6ME odds
-HEART_WT = unlist(strsplit("IonXpressRNA_009.R_2013_12_19_16_11_21_user_1PR-13-RNA-Seq_whole_transcriptome IonXpressRNA_011.R_2013_12_18_20_25_40_user_1PR-12-RNA-Seq_whole_transcriptome IonXpressRNA_013.R_2013_12_20_12_50_23_user_1PR-14-RNA-Seq_whole_transcriptome IonXpressRNA_015.R_2013_12_21_20_34_59_user_1PR-15-RNA-Seq_whole_transcriptome",' '))
 
 samples<-c(MUSCLE_KO,MUSCLE_WT,HEART_KO,HEART_WT)
 counts <- Reduce(function(a,b){
@@ -89,11 +73,7 @@ counts <- Reduce(function(a,b){
 
 counts<-counts[!(rownames(counts) %in% c("alignment_not_unique","ambiguous")),]
 names(counts)<-c(concat('MUS_ANT_',seq(1:4)),concat('MUS_B6ME_',seq(1:4)),concat('HRT_ANT_',seq(1:4)),concat('HRT_B6ME_',seq(1:4)))
-
-#MUSCLE_KO 
-  	#MUSCLE_WT
-		#HEART_KO
-		#HEART_WT
+#MUSCLE_KO  MUSCLE_WT HEART_KO HEART_WT
 conds<-c(rep('MT',4),rep('MN',4),rep('HT',4),rep('HN',4))
 
 #ANT1 KO
@@ -109,14 +89,8 @@ countsAboveThreshold<-subset(counts,rowSums(counts)>minCount)
 countsMatrix<-as.matrix(countsAboveThreshold)
 rownames(countsMatrix)<-rownames(countsAboveThreshold)
 
-# if(!file.exists("bamCounts.RData")){
-#   bamPaths=concat('mapped/',samples,'.sorted.bam')
-#   bamView<-BamViews(bamPaths=bamPaths)
-#   bamcounts<-countBam(bamView)
-#   save(bamcounts,file="bamCounts.RData",compress=TRUE)
-# }
 
-starstatsraw<-read.table("starlogs.parsed.txt",sep="\t",header=TRUE,colClasses=c('character','integer','character','character'))
+starstatsraw<-read.table(STARLOGS,sep="\t",header=TRUE,colClasses=c('character','integer','character','character'))
 row.names(starstatsraw)<-starstatsraw$Sample
 starstats<-starstatsraw[c(MUSCLE_KO,MUSCLE_WT,HEART_KO,HEART_WT),]
 starstats$Sample<-concat(str_sub(starstats$Sample,1,16),'...')
@@ -125,14 +99,14 @@ starstats$cond<-conds
 
 cds <- newCountDataSet( countsMatrix, pdata$condition )
 
-ercc.counts<-read.table("ercc.counts",col.names=c("sample","count"),stringsAsFactors=FALSE)
+ercc.counts<-read.table(ERCC_COUNTS,col.names=c("sample","count"),stringsAsFactors=FALSE)
 
 #these better be in the same order
 stopifnot(samples==ercc.counts$sample)
 sizeFactors(cds)<-ercc.counts$count
 
-write.table(counts(cds, normalized=FALSE),file="raw_counts.tab.txt",sep="\t",quote=FALSE)
-write.table(counts(cds, normalized=TRUE),file="normalized_counts.tab.txt",sep="\t",quote=FALSE)
+write.table(counts(cds, normalized=FALSE),file=RAW_COUNTS,sep="\t",quote=FALSE)
+write.table(counts(cds, normalized=TRUE),file=NORM_COUNTS,sep="\t",quote=FALSE)
 
 #not going to estimate if using ercc
 #cds <- estimateSizeFactors( cds )
@@ -145,12 +119,12 @@ sharingMode<-'maximum'
 method<-'per-condition'
 fits<-'local'
 cds <- estimateDispersions( cds , fitType="local", method=method, sharingMode=sharingMode)
-save(cds,file="cds.df.RData",compress=TRUE)
+save(cds,file=CDS_FILE,compress=TRUE)
 myPval<-.01
 @
 <<conductTest,echo=FALSE,results=hide>>=
 res <- nbinomTest( cds, "MN", "MT")
-resfile<-"muscleResults.csv"
+resfile<-MUSCLE_RES
 @
 <<annotate,echo=FALSE,results=hide>>=
 #http://www.bioconductor.org/packages/release/bioc/vignettes/biomaRt/inst/doc/biomaRt.pdf
@@ -282,7 +256,7 @@ print(q)
 \subsubsection{Significantly DE genes in heart}
 <<deheart,results=tex,echo=F>>=
 res <- nbinomTest( cds, "HN", "HT")
-resfile<-"heartResults.csv"
+resfile<-HEART_RES
 <<annotate>>
 <<dePval>>
 @

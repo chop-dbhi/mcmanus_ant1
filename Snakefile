@@ -53,7 +53,7 @@ GATKED = ['mapped/'+f+'.sorted.gatk.bam.bai' for f in SAMPLES]
 COUNTS = ['counts/'+f+'.tsv' for f in SAMPLES]
 CUFFED = ['cufflinks/'+f+'/transcripts.gtf' for f in SAMPLES]
 EXPRED = ['express/reports/'+f+'/results.xprs' for f in SAMPLES]
-LOGS = 'starlogs.parsed.txt'
+STARLOGS = 'starlogs.parsed.txt'
 SAMPLEFILE = "samplefile.rnaseqc.txt"
 RNASEQC_DIR = "RNASEQC_DIR/"
 RNASEQC_INDEX = RNASEQC_DIR+"index.html"
@@ -63,25 +63,13 @@ ERCC = ['ercc/'+f+'.idxstats' for f in SAMPLES]
 GO_DOMAINS = ['biological_process','cellular_component','molecular_function']
 GAGE_GO_FILES = ['GAGE/GO.'+tissue+'.ant1.'+domain+'.'+direction+'.csv' for tissue in ['heart','muscle'] for domain in GO_DOMAINS for direction in ['up','down']]
 GAGE_KEGG_FILES = ['GAGE/KEGG.'+tissue+'.ant1.signaling_or_metabolism_pathways.both.csv' for tissue in ['heart','muscle']]
+
 rule all:
-	input: DIRS, CHRNAME, MAPPED, CUFFED, COUNTS, GATKED, RNASEQC_INDEX, LOGS, QCED, BIGWIGS
-
-rule latest:
-	input: CUFFED
-
-rule mapped:
-	input: MAPPED
-
-rule expr:
-	input: EXPRED
+	input: DIRS, CHRNAME, MAPPED, CUFFED, COUNTS, GATKED, RNASEQC_INDEX, STARLOGS, QCED, BIGWIGS
 
 rule dirs:
 	output: DIRS
 	shell: "mkdir -p "+' '.join(DIRS)
-
-rule doAnything:
-	output: "testme.txt"
-	shell: "touch testme.txt"
 
 ##### CLEAN #####
 rule clean:
@@ -287,27 +275,56 @@ rule htseq:
 			
 ##### Report #####
 rule report:
-	input: COUNTS
-	output: "diffExp.tex", "cds.df.RData", "muscleResults.csv", "heartResults.csv"
+	input: COUNTS, star=STARLOGS, ercc="ercc.counts", source="diffExp.Rnw"
+	output: tex="diffExp.tex", cds="cds.df.RData", mr="muscleResults.csv", hr="heartResults.csv", raw="raw_counts.tab.txt", norm="normalized_counts.tab.txt", 
 	run:
 		R("""
-		MUSCLE_KO<-strsplit("{MUSCLE_KO}", " ");
-		MUSCLE_WT<-strsplit("{MUSCLE_WT}", " ");
-		HEART_KO<-strsplit("{HEART_KO}", " ");
-		HEART_WT<-strsplit("{HEART_WT}", " ");
-		Sweave("diffExp.Rnw")
+		STARLOGS<-"{input.star}"
+		ERCC_COUNTS<-"{input.ercc}"
+		RAW_COUNTS<-"{output.raw}"
+		NORM_COUNTS<-"{output.norm}"
+		CDS_FILE<-"{output.cds}"
+		HEART_RES<-"{input.hr}"
+		MUSCLE_RES<-"{input.mr}"
+				
+		MUSCLE_KO<-unlist(strsplit("{MUSCLE_KO}", " "));
+		MUSCLE_WT<-unlist(strsplit("{MUSCLE_WT}", " "));
+		HEART_KO<-unlist(strsplit("{HEART_KO}", " "));
+		HEART_WT<-unlist(strsplit("{HEART_WT}", " "));
+		Sweave("{input.source}",output="{output.tex}")
 		""")
 
 rule gage:
-	input: "cds.df.RData"
+	input: "cds.df.RData", "gage.R"
 	output: GAGE_GO_FILES, GAGE_KEGG_FILES
 	run:
 		R("""
 		source("gage.R")
 		""")
 
-rule topgo:
-	input: "topGO.Rnw", "muscleResults.csv", "heartResults.csv"
+rule submodule_update:
+    run:
+        """git submodule update"""
+
+rule topgo_data:
+	input: results="{tissue}Results.csv", source="common/rna-seq/topGO.R"
+	output: "{tissue}GO.RData"
+	run:
+		R("""
+			source("topGO.R")
+			res<-read.csv("{input.results}")
+			de<-hot<-cold<-list()
+			for(ont in c('BP','CC','MF')){{
+			  de[[ont]]<-getGO(res,ontology=ont,desc=paste("{wildcards.tissue}",ont,"most sig de"),q.column="pval",scoreOrder="increasing")
+			  hot[[ont]]<-getGO(res,ontology=ont,desc=paste("{wildcards.tissue}",ont,"most upreg in ANT1 wort pval"),q.column="foldChange",scoreOrder="decreasing")
+			  cold[[ont]]<-getGO(res,ontology=ont,desc=paste("{wildcards.tissue}",ont,"most downreg in ANT1 wort pval"),q.column="foldChange",scoreOrder="increasing")
+			}}
+			GOs<-list(de=de,hot=hot,cold=cold)
+			save(GOs,file="{output}")
+		""")
+
+rule topgo_report:
+	input: "topGO.Rnw", "muscleGO.RData", "heartGO.RData"
 	output: "topGO.tex"
 	run:
 		R("""

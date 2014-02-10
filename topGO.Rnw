@@ -47,77 +47,22 @@ library(xtable)
 @
 
 \section{Introduction}
-TopGO provides additional tools for exploring GO enrichment.
+TopGO \cite{Anders} provides additional tools for exploring GO enrichment.
 
 The classicFisher is a filtered list approach - enrichment is strictly based on counts of genes associated with the GO terms.
 
 Kolmogorov-Smirnov test is supposed to use differential p-values to weight enrichment. The elim method was design to be more conservative then the classic method.
 
 <<topgo,results=hide,echo=F>>=
-#what is the point of the gene universe?
-#i have 14642 genes from the rna-seq already
-#xx <- annFUN.org("BP", mapping = "org.Mm.eg.db", ID = "Ensembl")
-#allGenes <- unique(unlist(xx))
-#sigRes<-subset(res,padj<=0.01)
-#sigGenes<-sigRes$id
-#geneList <- factor(as.integer(allGenes %in% sigGenes))
-
-getSigOrNot<-function (allScore) 
-{
-    return(allScore < 0.01)
-}
-#res data frame withid field containing gene names and a quantitative column usually with significance
-#desc caption description
-#ontology one of BP, CC, MF
-#print latex of go summary table
-#return GOdata object, table object
-getGO<-function(res,desc,ontology,nodes=5,species='mm', id.type='Ensembl', id.column='id', q.column='pval', geneSel=getSigOrNot, scoreOrder = 'increasing', debug=FALSE) {
-  if (toupper(species) %in% c('HUMAN', 'HS', 'HG19', 'HG18', 'HG17', 'H. SAPIENS', 'HOMO SAPIENS', 'GRCH37')) mapping<-'org.Hs.eg.db' else 
-  if (toupper(species) %in% c('MOUSE', 'MM', 'MM9', 'MM8', 'MM7', 'M. MUSCULUS', 'MUS MUSCULUS')) mapping<-'org.Mm.eg.db' else
-  if (toupper(species) %in% c('RAT', 'RN', 'RATTUS NORVEGICUS', 'RN4', 'RN3', 'R. NORVEGICUS')) mapping<-'org.Rn.eg.db' else
-  if (toupper(species) %in% c('WORM', 'C. ELEGANS', 'CAENORHABDITIS ELEGANS', 'ELEGANS', 'NEMATODE', 'WS190', 'WS170', 'CE6', 'CE4')) mapping<-'org.Ce.eg.db' else
-  stop('Error: unknown species \"', species, '\"');
-
-  
-  #NA's will screw up the KS test
-  geneList<-as.vector(res[!is.na(res[,q.column]),q.column])
-  names(geneList)<-res[!is.na(res[,q.column]),id.column]
-  
-  GOdata <- new("topGOdata", ontology = ontology, allGenes = geneList, geneSel = geneSel, description = "Test", annot = annFUN.org, mapping = mapping, ID = id.type)
-  resultFisher <- runTest(GOdata, algorithm = "classic", statistic = "fisher", scoreOrder = scoreOrder)
-  resultKS <- runTest(GOdata, algorithm = "classic", statistic = "ks", scoreOrder = scoreOrder)
-  resultKS.elim <- runTest(GOdata, algorithm = "elim", statistic = "ks", scoreOrder = scoreOrder)
-  
-  genTab <- GenTable(GOdata, classicFisher = resultFisher,
-                     classicKS = resultKS, elimKS = resultKS.elim, orderBy = "elimKS", ranksOf = "classicFisher", topNodes = nodes)
-  xtable<-xtable(genTab,type=tex,caption=desc,digits=3,display=c('d','s','s','d','d','f','d','g','g','g'))
-
-  return(list(godata=GOdata,gentab=genTab,xtable=xtable))
-}
-muscleRes<-read.csv("muscleResults.csv")
-heartRes<-read.csv("heartResults.csv")
-muscleDf<-muscleHot<-muscleCold<-heartDf<-heartHot<-heartCold<-list()
-for(ont in c('BP','CC','MF')){
-  muscleDf[[ont]]<-getGO(muscleRes,ontology=ont,desc=paste("muscle",ont,"most sig de"),q.column="pval",scoreOrder="increasing")
-  muscleHot[[ont]]<-getGO(muscleRes,ontology=ont,desc=paste("muscle",ont,"most upreg in ANT1 wort pval"),q.column="foldChange",scoreOrder="decreasing")
-  muscleCold[[ont]]<-getGO(muscleRes,ontology=ont,desc=paste("muscle",ont,"most downreg in ANT1 wort pval"),q.column="foldChange",scoreOrder="increasing")
-
-  heartDf[[ont]]<-getGO(heartRes,ontology=ont,desc=paste("heart",ont,"most sig de"),q.column="pval",scoreOrder="increasing")
-  heartHot[[ont]]<-getGO(heartRes,ontology=ont,desc=paste("heart",ont,"most up reg in ANT1 wort pval"),q.column="foldChange",scoreOrder="decreasing")
-  heartCold[[ont]]<-getGO(heartRes,ontology=ont,desc=paste("heart",ont,"most down reg in ANT1 wort pval"),q.column="foldChange",scoreOrder="increasing")
-}
-muscleGos<-list(df=muscleDf,hot=muscleHot,cold=muscleCold)
-heartGos<-list(df=heartDf,hot=heartHot,cold=heartCold)
-save(muscleGos,file="muscleGO.RData")
-save(heartGos,file="heartGO.RData")
-
+muscleGos<-get(load("muscleGO.RData"))
+heartGos<-get(load("heartGO.RData"))
+ont<-'BP'
 @
 \section{Muscle}
 <<musclego,echo=FALSE,results=tex>>=
-ont<-'BP'
-  print(muscleDf[ont]$xtable,include.rownames=FALSE, tabular.environment = "longtable", floating = FALSE, size="\\tiny")
-  print(muscleHot[ont]$xtable,include.rownames=FALSE, tabular.environment = "longtable", floating = FALSE, size="\\tiny")
-  print(muscleCold[ont]$xtable,include.rownames=FALSE, tabular.environment = "longtable", floating = FALSE, size="\\tiny")
+for(crit in c('de','hot','cold')){
+  print(muscleGos[[crit]][[ont]]$xtable,include.rownames=FALSE, tabular.environment = "longtable", floating = FALSE, size="\\scriptsize")
+}
 @
 \pagebreak
 <<musclecc,echo=FALSE,results=tex>>=
@@ -131,11 +76,14 @@ ont<-'MF'
 @
 \pagebreak
 \section{Heart}
-<<heartgo,echo=FALSE,results=tex>>=
+<<heartsetup,echo=FALSE,results=hide>>=
 ont<-'BP'
-  print(heartDf[ont]$xtable,include.rownames=FALSE, tabular.environment = "longtable", floating = FALSE, size="\\tiny")
-  print(heartHot[ont]$xtable,include.rownames=FALSE, tabular.environment = "longtable", floating = FALSE, size="\\tiny")
-  print(heartCold[ont]$xtable,include.rownames=FALSE, tabular.environment = "longtable", floating = FALSE, size="\\tiny")
+@
+
+<<heartgo,echo=FALSE,results=tex>>=
+for(crit in c('de','hot','cold')){
+  print(heartGos[[crit]][[ont]]$xtable,include.rownames=FALSE, tabular.environment = "longtable", floating = FALSE, size="\\scriptsize")
+}
 @
 \pagebreak
 <<heartcc,echo=FALSE,results=tex>>=
@@ -168,9 +116,10 @@ time<-Sys.time()
 \small  			% put the bibliography in a small font
 
 
-\bibitem{Anders} Anders, S. and  Huber, W. Differential expression analysis for sequence count data. Nature Precedings
-http://dx.doi.org/10.1038/npre.2010.4282.2.
-
+\bibitem{Alexa} Alexa, A., Rahnenfuhrer, J., and Lengauer, T. (2006).
+Improved scoring of functional groups from gene expression data by decorrelating 
+go graph structure. Bioinformatics (Oxford, England), 22:1600-1607.
+10.1093/bioinformatics/btl140.
 \end{thebibliography}  	% end the bibliography
 
 

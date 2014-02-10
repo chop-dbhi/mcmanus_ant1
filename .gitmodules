@@ -1,0 +1,3 @@
+[submodule "common/rna-seq"]
+	path = common/rna-seq
+	url = git@github.research.chop.edu:BiG/rna-seq-common-functions.git
