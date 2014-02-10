@@ -21,6 +21,12 @@ Transcript fasta:
 - express-1.5.1
 - RNA-SeQC_v1.1.7
 
+###Submodules###
+```
+git submodule add git@github.research.chop.edu:BiG/rna-seq-common-functions.git common/rna-seq
+git submodule update --init
+```
+
 ###To run on raboso###
 ```
 cd snake-env && source bin/activate

@@ -58,6 +58,8 @@ sessInfo<-sessionInfo()
 aligner<-"STAR"
 reference<-"Ensembl/GRCm38"
 
+load("diffExp.state.RData")
+
 fetchCounts<-function(sampleName){
   counts<-read.table(concat("counts/",sampleName,".tsv"),col.names=c("txid",sampleName))
   row.names(counts)<-counts$txid
@@ -68,7 +70,7 @@ counts <- Reduce(function(a,b){
         ans <- merge(a,b,by="row.names",all=T)
         row.names(ans) <- ans[,"Row.names"]
         ans[,!names(ans) %in% "Row.names"]
-        }, sapply(samples,fetchCounts))
+        }, lapply(samples,fetchCounts))
 
 counts<-counts[!(rownames(counts) %in% c("alignment_not_unique","ambiguous")),]
 names(counts)<-c(concat('MUS_ANT_',seq(1:4)),concat('MUS_B6ME_',seq(1:4)),concat('HRT_ANT_',seq(1:4)),concat('HRT_B6ME_',seq(1:4)))

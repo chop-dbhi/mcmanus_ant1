@@ -63,9 +63,13 @@ ERCC = ['ercc/'+f+'.idxstats' for f in SAMPLES]
 GO_DOMAINS = ['biological_process','cellular_component','molecular_function']
 GAGE_GO_FILES = ['GAGE/GO.'+tissue+'.ant1.'+domain+'.'+direction+'.csv' for tissue in ['heart','muscle'] for domain in GO_DOMAINS for direction in ['up','down']]
 GAGE_KEGG_FILES = ['GAGE/KEGG.'+tissue+'.ant1.signaling_or_metabolism_pathways.both.csv' for tissue in ['heart','muscle']]
+GAGE_FILES = GAGE_GO_FILES + GAGE_KEGG_FILES
 
 rule all:
-	input: DIRS, CHRNAME, MAPPED, CUFFED, COUNTS, GATKED, RNASEQC_INDEX, STARLOGS, QCED, BIGWIGS
+	input: DIRS, CHRNAME, MAPPED, CUFFED, COUNTS, GATKED, RNASEQC_INDEX, STARLOGS, QCED, BIGWIGS, GAGE_FILES
+
+rule gagefiles:
+    input: GAGE_FILES
 
 rule dirs:
 	output: DIRS
@@ -276,7 +280,7 @@ rule htseq:
 ##### Report #####
 rule report:
 	input: COUNTS, star=STARLOGS, ercc="ercc.counts", source="diffExp.Rnw"
-	output: tex="diffExp.tex", cds="cds.df.RData", mr="muscleResults.csv", hr="heartResults.csv", raw="raw_counts.tab.txt", norm="normalized_counts.tab.txt", 
+	output: state="diffExp.state.RData", tex="diffExp.tex", cds="cds.df.RData", mr="muscleResults.csv", hr="heartResults.csv", raw="raw_counts.tab.txt", norm="normalized_counts.tab.txt"
 	run:
 		R("""
 		STARLOGS<-"{input.star}"
@@ -293,16 +297,16 @@ rule report:
 		HEART_WT<-unlist(strsplit("{HEART_WT}", " "));
 		
 		samples<-c(MUSCLE_KO,MUSCLE_WT,HEART_KO,HEART_WT)
-
+        save(STARLOGS,ERCC_COUNTS,RAW_COUNTS,NORM_COUNTS,CDS_FILE,HEART_RES,MUSCLE_RES,MUSCLE_KO,MUSCLE_WT,HEART_KO,HEART_WT,samples,file="diffExp.state.RData")
 		Sweave("{input.source}",output="{output.tex}")
 		""")
 
 rule gage:
-	input: "cds.df.RData", "gage.R"
-	output: GAGE_GO_FILES, GAGE_KEGG_FILES
+	input: cds="cds.df.RData", gage="common/rna-seq/gage.R"
+	output: GAGE_FILES
 	run:
 		R("""
-		source("gage.R")
+		source("{input.gage}")
 		""")
 
 rule submodule_update:
