@@ -44,3 +44,5 @@ snakemake --directory /nas/is1/leipzig/martin/snake-env --snakefile /nas/is1/lei
 source /mnt/isilon/cbmi/variome/leipzig/martin/respublica-env/bin/activate
 snakemake --directory /mnt/isilon/cbmi/variome/leipzig/martin/snake-env --snakefile /mnt/isilon/cbmi/variome/leipzig/martin/snake-env/Snakefile -c qsub -j 16
 ```
+
+To install Snakemake on your own server read this: http://github.research.chop.edu/gist/leipzigj/8
