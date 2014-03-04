@@ -45,3 +45,5 @@ Warning: Respublica has low RAM ceilings - some steps are better done on Raboso
 source /mnt/isilon/cbmi/variome/leipzig/respublica-env/bin/activate
 snakemake --directory /mnt/isilon/cbmi/variome/leipzig/martin/src --snakefile /mnt/isilon/cbmi/variome/leipzig/martin/src/Snakefile -c qsub -j 16
 ```
+
+To install Snakemake on your own server read this: http://github.research.chop.edu/gist/leipzigj/8
