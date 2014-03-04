@@ -297,7 +297,7 @@ rule report:
 		HEART_WT<-unlist(strsplit("{HEART_WT}", " "));
 		
 		samples<-c(MUSCLE_KO,MUSCLE_WT,HEART_KO,HEART_WT)
-        save(STARLOGS,ERCC_COUNTS,RAW_COUNTS,NORM_COUNTS,CDS_FILE,HEART_RES,MUSCLE_RES,MUSCLE_KO,MUSCLE_WT,HEART_KO,HEART_WT,samples,file="diffExp.state.RData")
+		save(STARLOGS,ERCC_COUNTS,RAW_COUNTS,NORM_COUNTS,CDS_FILE,HEART_RES,MUSCLE_RES,MUSCLE_KO,MUSCLE_WT,HEART_KO,HEART_WT,samples,file="diffExp.state.RData")
 		Sweave("{input.source}",output="{output.tex}")
 		""")
 
@@ -307,6 +307,24 @@ rule gage:
 	run:
 		R("""
 		source("{input.gage}")
+    
+    refMuscleCols<-5:8
+    altMuscleCols<-1:4
+    refHeartCols<-13:16
+    altHeartCols<-9:12
+    
+    go.mf.muscle<-writeGageTables("muscle","molecular_function","GO",go.mf.mm,refMuscleCols,altMuscleCols,TRUE)
+    go.cc.muscle<-writeGageTables("muscle","cellular_component","GO",go.cc.mm,refMuscleCols,altMuscleCols,TRUE)
+    go.bp.muscle<-writeGageTables("muscle","biological_process","GO",go.bp.mm,refMuscleCols,altMuscleCols,TRUE)
+    
+    go.mf.heart<-writeGageTables("heart","molecular_function","GO",go.mf.mm,refHeartCols,altHeartCols,TRUE)
+    go.cc.heart<-writeGageTables("heart","cellular_component","GO",go.cc.mm,refHeartCols,altHeartCols,TRUE)
+    go.bp.heart<-writeGageTables("heart","biological_process","GO",go.bp.mm,refHeartCols,altHeartCols,TRUE)
+    
+    kg.mm<-kegg.gsets(species='mouse')
+    kegg.sigmet<-kg.mm$kg.sets[kg.mm$sigmet.idx]
+    kegg.muscle<-writeGageTables("muscle","signaling_or_metabolism_pathways","KEGG",kegg.sigmet,refMuscleCols,altMuscleCols,FALSE)
+    kegg.heart<-writeGageTables("heart","signaling_or_metabolism_pathways","KEGG",kegg.sigmet,refHeartCols,altHeartCols,FALSE)
 		""")
 
 rule submodule_update:

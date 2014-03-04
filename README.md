@@ -35,12 +35,13 @@ snakemake -j 16
 
 ###To run on variome###
 ```
-source /nas/is1/leipzig/martin/variome-env/bin/activate
-snakemake --directory /nas/is1/leipzig/martin/snake-env --snakefile /nas/is1/leipzig/martin/snake-env/Snakefile  -c qsub -j 16
+source /nas/is1/leipzig/variome-env/bin/activate
+snakemake --directory /nas/is1/leipzig/martin/src --snakefile /nas/is1/leipzig/martin/src/Snakefile  -c qsub -j 16
 ```
 
 ###To run on respublica###
+Warning: Respublica has low RAM ceilings - some steps are better done on Raboso
 ```
-source /mnt/isilon/cbmi/variome/leipzig/martin/respublica-env/bin/activate
-snakemake --directory /mnt/isilon/cbmi/variome/leipzig/martin/snake-env --snakefile /mnt/isilon/cbmi/variome/leipzig/martin/snake-env/Snakefile -c qsub -j 16
+source /mnt/isilon/cbmi/variome/leipzig/respublica-env/bin/activate
+snakemake --directory /mnt/isilon/cbmi/variome/leipzig/martin/src --snakefile /mnt/isilon/cbmi/variome/leipzig/martin/src/Snakefile -c qsub -j 16
 ```
