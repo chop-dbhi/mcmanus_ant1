@@ -66,14 +66,17 @@ GAGE_KEGG_FILES = ['GAGE/KEGG.'+tissue+'.ant1.signaling_or_metabolism_pathways.b
 GAGE_FILES = GAGE_GO_FILES + GAGE_KEGG_FILES
 
 rule all:
-	input: DIRS, CHRNAME, MAPPED, CUFFED, COUNTS, GATKED, RNASEQC_INDEX, STARLOGS, QCED, BIGWIGS, GAGE_FILES
+     input: DIRS, CHRNAME, MAPPED, CUFFED, COUNTS, GATKED, RNASEQC_INDEX, STARLOGS, QCED, BIGWIGS, GAGE_FILES
 
 rule gagefiles:
-    input: GAGE_FILES
+     input: GAGE_FILES
 
 rule dirs:
 	output: DIRS
 	shell: "mkdir -p "+' '.join(DIRS)
+
+rule testdir:
+     shell: "pwd >> testdir"
 
 ##### CLEAN #####
 rule clean:
