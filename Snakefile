@@ -64,6 +64,7 @@ SAMPLEFILE = "samplefile.rnaseqc.txt"
 RNASEQC_DIR = "RNASEQC_DIR/"
 RNASEQC_INDEX = RNASEQC_DIR + "index.html"
 BIGWIGS = ['tracks/' + f + '.bw' for f in SAMPLES]
+BIGWIG_NAMES = [ f + '.bw' for f in SAMPLES]
 QCED = ['fastqc/' + f + '.trimmed_fastqc.zip' for f in SAMPLES]
 ERCC = ['ercc/' + f + '.idxstats' for f in SAMPLES]
 GO_DOMAINS = ['biological_process', 'cellular_component', 'molecular_function']
@@ -578,7 +579,7 @@ set.size  | the effective gene set size, i.e. the number of genes included in th
             for f in GAGE_GO_FILES:
                 outfile.write(">[{0}]({1}/{0})\n\n".format(f,SLINK))
             outfile.write("""
-###@ KEGG Pathway Enrichment with GAGE
+### KEGG Pathway Enrichment with GAGE
 The GAGE KEGG analysis does not assume expression is in one direction.
 """)
             for f in GAGE_KEGG_FILES:
@@ -591,7 +592,7 @@ TopGO provides additional tools for exploring GO enrichment.
 ### Using BigWig Tracks in UCSC Genome Browser
 Go to [http://genome.ucsc.edu/cgi-bin/hgCustom](http://genome.ucsc.edu/cgi-bin/hgCustom), make sure mm10 is selected, and copy-paste one or more of these into the URL field.
 """)
-            for c, b, p in zip(COLORS, BIGWIGS, PRETTY_NAMES):
+            for c, b, p in zip(COLORS, BIGWIG_NAMES, PRETTY_NAMES):
                 outfile.write(
                     "> ```track type=bigWig name={0} db=mm10 smoothingWindow=4 color={1} autoScale=on viewLimits=1:200 visibility=full windowingFunction=maximum bigDataUrl={3}/{2}```\n\n".format(p, c, b, S3_LINK))
             outfile.write("""
