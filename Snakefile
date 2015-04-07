@@ -15,7 +15,7 @@ PRIM_GTF = REFDIR + "Annotation/Genes/primary_genes.gtf"
 MASKFILE = REFDIR + "Annotation/mask.gtf"
 RRNA = REFDIR + "Annotation/GRCm38_rRNA.list"
 
-S3_LINK = "https://s3.amazonaws.com/inx.wallacelab.ant1rnaseq/"
+S3_LINK = "https://s3.amazonaws.com/inx.wallacelab.ant1rnaseq"
 S3_BUCKET = "s3://inx.wallacelab.ant1rnaseq"
 S3_PROFILE = "leipzig"
 
@@ -587,11 +587,11 @@ The GAGE KEGG analysis does not assume expression is in one direction.
             outfile.write("""
 ### TopGO Analysis
 TopGO provides additional tools for exploring GO enrichment.
-> [topGO.pdf](topGO.pdf)
+> [topGO.pdf]({0}/topGO.pdf)
 
 ### Using BigWig Tracks in UCSC Genome Browser
 Go to [http://genome.ucsc.edu/cgi-bin/hgCustom](http://genome.ucsc.edu/cgi-bin/hgCustom), make sure mm10 is selected, and copy-paste one or more of these into the URL field.
-""")
+""".format(SLINK))
             for c, b, p in zip(COLORS, BIGWIG_NAMES, PRETTY_NAMES):
                 outfile.write(
                     "> ```track type=bigWig name={0} db=mm10 smoothingWindow=4 color={1} autoScale=on viewLimits=1:200 visibility=full windowingFunction=maximum bigDataUrl={3}/{2}```\n\n".format(p, c, b, S3_LINK))
