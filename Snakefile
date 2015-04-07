@@ -15,6 +15,11 @@ PRIM_GTF = REFDIR + "Annotation/Genes/primary_genes.gtf"
 MASKFILE = REFDIR + "Annotation/mask.gtf"
 RRNA = REFDIR + "Annotation/GRCm38_rRNA.list"
 
+S3_LINK = "https://s3.amazonaws.com/inx.wallacelab.ant1rnaseq/"
+S3_BUCKET = "s3://inx.wallacelab.ant1rnaseq"
+S3_PROFILE = "leipzig"
+
+
 ##### TOOLS #####
 CUTADAPT = "../../../bin/cutadapt"
 BEDTOOLS = "../../../bin/BEDTools/2.16.2"
@@ -278,9 +283,9 @@ rule cufflinks:
         8
     shell:
         """
-	       mkdir -p cufflinks/{wildcards.sample}
-	       {CUFF} -p 8 -g {input.gtf} -M {input.mask} --max-bundle-length 8000000 --multi-read-correct --library-type=fr-secondstrand --output-dir cufflinks/{wildcards.sample} {input.bam}
-	       """
+        mkdir -p cufflinks/{wildcards.sample}
+        {CUFF} -p 8 -g {input.gtf} -M {input.mask} --max-bundle-length 8000000 --multi-read-correct --library-type=fr-secondstrand --output-dir cufflinks/{wildcards.sample} {input.bam}
+        """
 
 rule cuffreport:
     input:
@@ -494,6 +499,7 @@ rule bigwig:
         """
 
 #### Site #####
+SLINK = "{{SLINK}}"
 COLORS = """
 141,211,199
 255,255,179
@@ -520,38 +526,36 @@ rule siteindex:
         "site/index.md"
     run:
         with open(output[0], 'w') as outfile:
-            outfile.write("""---
-layout: wide
----
+            outfile.write("""
 ### Quality Control
 #### FastQC Output
 [FastQC] is quality control tool that can point to certain biases that represent contamination. Be aware, the report may reflect inherent biases in the RNA-Seq experiment.
 """)
             for s, p in zip(SAMPLES, PRETTY_NAMES):
                 outfile.write(
-                    "> [`{0}`]({{{{ site.baseurl }}}}/fastqc/{1}.trimmed_fastqc/fastqc_report.html)\n\n".format(p, s))
+                    "> [`{0}`]({1}/fastqc/{2}.trimmed_fastqc/fastqc_report.html)\n\n".format(SLINK, p, s))
             outfile.write("""
 		
 #### RNA-SeQC Output
 [RNA-SeQC](http://bioinformatics.oxfordjournals.org/content/28/11/1530.long) produces extensive metrics for RNA-Seq runs. Not all of the sections will apply to the Ion Proton protocol.
-Most interesting might be the rRNA rate in the multisample [summary document](RNASEQC_DIR/countMetrics.html).
-> [RNA-SeQC home](RNASEQC_INDEX)
+Most interesting might be the rRNA rate in the multisample [summary document]({1}/countMetrics.html).
+> [RNA-SeQC home]({0}/{2})
 
-> [RNA-SeQC reports](RNASEQC_DIR+'countMetrics.html')
+> [RNA-SeQC reports]({0}/{1}/countMetrics.html)
 
-> [RNA-SeQC reports](RNASEQC_DIR+'report.html')
+> [RNA-SeQC reports]({0}/{1}/report.html)
 
 ### HT-Seq Counts
-> [Raw HT-Seq Counts](raw_counts.tab.txt)
+> [Raw HT-Seq Counts]({0}/raw_counts.tab.txt)
 
-> [ERCC Spike-in Normalized Counts](normalized_counts.tab.txt)
+> [ERCC Spike-in Normalized Counts]({0}/normalized_counts.tab.txt)
 
 ### Differential expression analysis report and significantly DE gene tables
-> [diffExp.pdf](diffExp.pdf)
+> [diffExp.pdf]({0}/diffExp.pdf)
 
-> [muscleResults.csv](muscleResults.csv)
+> [muscleResults.csv]({0}/muscleResults.csv)
 
-> [heartResults.csv](heartResults.csv)
+> [heartResults.csv]({0}/heartResults.csv)
 
 ### GAGE
 GAGE was used to generate GO and KEGG pathway analysis using a ranked list analysis (read counts are taken into consideration)
@@ -570,15 +574,15 @@ stat.mean | mean of the individual statistics from multiple single array based g
 p.val     | global p-value or summary of the individual p-values from multiple single array based gene set tests. This is the default p-value being used.
 q.val     | FDR q-value adjustment of the global p-value using the Benjamini & Hochberg procedure implemented in multtest package. This is the default q-value being used.
 set.size  | the effective gene set size, i.e. the number of genes included in the gene set test
-""")
+""".format(SLINK,RNASEQC_DIR,RNASEQC_INDEX))
             for f in GAGE_GO_FILES:
-                outfile.write(">[{0}]({0})\n\n".format(f))
+                outfile.write(">[{1}/{0}]({0})\n\n".format(f,SLINK))
             outfile.write("""
 ###@ KEGG Pathway Enrichment with GAGE
 The GAGE KEGG analysis does not assume expression is in one direction.
 """)
             for f in GAGE_KEGG_FILES:
-                outfile.write(">[{0}]({0})\n\n".format(f))
+                outfile.write(">[{1}/{0}]({0})\n\n".format(f,SLINK))
             outfile.write("""
 ### TopGO Analysis
 TopGO provides additional tools for exploring GO enrichment.
@@ -589,7 +593,7 @@ Go to [http://genome.ucsc.edu/cgi-bin/hgCustom](http://genome.ucsc.edu/cgi-bin/h
 """)
             for c, b, p in zip(COLORS, BIGWIGS, PRETTY_NAMES):
                 outfile.write(
-                    "> ```track type=bigWig name={0} db=mm10 smoothingWindow=4 color={1} autoScale=on viewLimits=1:200 visibility=full windowingFunction=maximum bigDataUrl={{{{ site.baseurl }}}}/{2}```\n\n".format(p, c, b))
+                    "> ```track type=bigWig name={0} db=mm10 smoothingWindow=4 color={1} autoScale=on viewLimits=1:200 visibility=full windowingFunction=maximum bigDataUrl={3}/{2}```\n\n".format(p, c, b, S3_LINK))
             outfile.write("""
 ### Code repository
 Code used to generate this analysis is located here [http://github.research.chop.edu/BiG/martin-ant1-rnaseq](http://github.research.chop.edu/BiG/martin-ant1-rnaseq). Feel free to reuse.
@@ -613,10 +617,18 @@ rule publishsite:
 
 rule publishdata:
     input:
-        BIGWIGS, QCED, GAGE_GO_FILES, GAGE_KEGG_FILES, "diffExp.pdf", "topGO.pdf"
+        QCED, GAGE_GO_FILES, GAGE_KEGG_FILES, "diffExp.pdf", "topGO.pdf"
     shell:
         """
-        rsync -v --update --rsh=ssh -r diffExp.pdf topGO.pdf muscleResults.csv heartResults.csv fastqc tracks raw_counts.tab.txt normalized_counts.tab.txt RNASEQC_DIR GAGE {MITOMAP}
+        rsync -v --update --rsh=ssh -r diffExp.pdf topGO.pdf muscleResults.csv heartResults.csv fastqc raw_counts.tab.txt normalized_counts.tab.txt RNASEQC_DIR GAGE {MITOMAP}
+        """
+
+rule publishtracks:
+    input:
+        BIGWIGS
+    shell:
+        """
+        aws s3 --profile leipzig cp tracks/ {S3_BUCKET} --recursive --exclude "*" --include "*.bw" --acl public-read
         """
 
 
