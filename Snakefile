@@ -529,7 +529,7 @@ rule siteindex:
             outfile.write("""
 ### Quality Control
 #### FastQC Output
-[FastQC] is quality control tool that can point to certain biases that represent contamination. Be aware, the report may reflect inherent biases in the RNA-Seq experiment.
+[FastQC](http://www.bioinformatics.babraham.ac.uk/projects/fastqc) is quality control tool that can point to certain biases that represent contamination. Be aware, the report may reflect inherent biases in the RNA-Seq experiment.
 """)
             for s, p in zip(SAMPLES, PRETTY_NAMES):
                 outfile.write(
