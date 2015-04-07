@@ -533,7 +533,7 @@ rule siteindex:
 """)
             for s, p in zip(SAMPLES, PRETTY_NAMES):
                 outfile.write(
-                    "> [`{0}`]({1}/fastqc/{2}.trimmed_fastqc/fastqc_report.html)\n\n".format(SLINK, p, s))
+                    "> [`{0}`]({1}/fastqc/{2}.trimmed_fastqc/fastqc_report.html)\n\n".format(p, SLINK, s))
             outfile.write("""
 		
 #### RNA-SeQC Output
@@ -576,13 +576,13 @@ q.val     | FDR q-value adjustment of the global p-value using the Benjamini & H
 set.size  | the effective gene set size, i.e. the number of genes included in the gene set test
 """.format(SLINK,RNASEQC_DIR,RNASEQC_INDEX))
             for f in GAGE_GO_FILES:
-                outfile.write(">[{1}/{0}]({0})\n\n".format(f,SLINK))
+                outfile.write(">[{0}]({1}/{0})\n\n".format(f,SLINK))
             outfile.write("""
 ###@ KEGG Pathway Enrichment with GAGE
 The GAGE KEGG analysis does not assume expression is in one direction.
 """)
             for f in GAGE_KEGG_FILES:
-                outfile.write(">[{1}/{0}]({0})\n\n".format(f,SLINK))
+                outfile.write(">[{0}]({1}/{0})\n\n".format(f,SLINK))
             outfile.write("""
 ### TopGO Analysis
 TopGO provides additional tools for exploring GO enrichment.
