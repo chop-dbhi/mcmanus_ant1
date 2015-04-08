@@ -486,7 +486,7 @@ rule chrify:
         "{sample}.bdg.chr"
     shell:
         """
-        sed -e 's/^/chr/' {input} > {output}
+        cat {input} | sed -e 's/^/chr/'  | sed -e 's/^chrMT/chrM/'> {output}
         """
 
 rule bigwig:
@@ -539,7 +539,7 @@ rule siteindex:
 		
 #### RNA-SeQC Output
 [RNA-SeQC](http://bioinformatics.oxfordjournals.org/content/28/11/1530.long) produces extensive metrics for RNA-Seq runs. Not all of the sections will apply to the Ion Proton protocol.
-Most interesting might be the rRNA rate in the multisample [summary document]({1}/countMetrics.html).
+Most interesting might be the rRNA rate in the multisample [summary document]({0}/{1}/countMetrics.html).
 > [RNA-SeQC home]({0}/{2})
 
 > [RNA-SeQC reports]({0}/{1}/countMetrics.html)
@@ -557,6 +557,20 @@ Most interesting might be the rRNA rate in the multisample [summary document]({1
 > [muscleResults.csv]({0}/muscleResults.csv)
 
 > [heartResults.csv]({0}/heartResults.csv)
+
+### Convenience tables for Metcore aka GeneGo
+These are just lists of Ensembl identifiers
+> [muscle.top50.pval.txt]({0}/muscle.top50.pval.txt)
+
+> [muscle.top50.up.txt]({0}/muscle.top50.up.txt)    
+
+> [muscle.top50.down.txt]({0}/muscle.top50.down.txt)    
+
+> [heart.top50.pval.txt]({0}/heart.top50.pval.txt)    
+
+> [heart.top50.up.txt]({0}/heart.top50.up.txt)    
+
+> [heart.top50.down.txt]({0}/heart.top50.down.txt)    
 
 ### GAGE
 GAGE was used to generate GO and KEGG pathway analysis using a ranked list analysis (read counts are taken into consideration)

@@ -126,16 +126,19 @@ myPval<-.01
 <<conductTest,echo=FALSE,results=hide>>=
 res <- nbinomTest( cds, "MN", "MT")
 resfile<-MUSCLE_RES
+tissue<-"muscle"
 @
 <<annotate,echo=FALSE,results=hide>>=
 #http://www.bioconductor.org/packages/release/bioc/vignettes/biomaRt/inst/doc/biomaRt.pdf
 mart <- useMart(biomart = "ensembl", dataset = "mmusculus_gene_ensembl")
-results <- getBM(attributes = c("ensembl_gene_id","external_gene_id"),
+results <- getBM(attributes = c("ensembl_gene_id","external_gene_name"),
                  filters = "ensembl_gene_id", values = res$id,
                  mart = mart)
 row.names(results)<-results$ensembl_gene_id
-res<-cbind(results[res$id,"external_gene_id"],res)
+res<-cbind(results[res$id,"external_gene_name"],res)
+names(res)[1]<-"gene"
 write.csv(res,file=resfile)
+
 
 @
 \section{Introduction}
@@ -213,6 +216,9 @@ names(resSig)<-c('gene','ensid','baseMean','bNorm','bRB','fc','log2fc','pval','p
 myXtableOne<-xtable(resSig[order(resSig$pval),1:9],type=tex,caption=paste("Significant (P<",myPval,") differential expression in ANT1 after the correction for multiple testing.",nrow(resSig),"genes."),display=c('d','s','s','E','E','E','g','g','g','g'))
 
 print(myXtableOne,include.rownames=FALSE, tabular.environment = "longtable", floating = FALSE, size="\\footnotesize")
+
+#convenience table for genego
+write.table(resSig[order(resSig$pval),"ensid"][1:50],file=paste(tissue,"top50.pval.txt",sep="."),quote=FALSE,row.names=FALSE,col.names="ensembl")
 @
 
 \pagebreak
@@ -227,6 +233,9 @@ print(myXtableTwo,include.rownames=FALSE, tabular.environment = "longtable", flo
 }else{
   print("No significantly upregulated genes")
 }
+
+#convenience table for genego
+write.table(resSig[order(-resSig$fc),"ensid"][1:50],file=paste(tissue,"top50.up.txt",sep="."),quote=FALSE,row.names=FALSE,col.names="ensembl")
 @
 
 \pagebreak
@@ -240,6 +249,8 @@ print(myXtableThree,include.rownames=FALSE, tabular.environment = "longtable", f
 }else{
   print("No significantly downregulated genes")
 }
+#convenience table for genego
+write.table(resSig[order(resSig$fc),"ensid"][1:50],file=paste(tissue,"top50.down.txt",sep="."),quote=FALSE,row.names=FALSE,col.names="ensembl")
 @
 
 \pagebreak
@@ -258,6 +269,7 @@ print(q)
 <<deheart,results=tex,echo=F>>=
 res <- nbinomTest( cds, "HN", "HT")
 resfile<-HEART_RES
+tissue<-"heart"
 <<annotate>>
 <<dePval>>
 @

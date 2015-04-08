@@ -38,7 +38,7 @@
 		
 #### RNA-SeQC Output
 [RNA-SeQC](http://bioinformatics.oxfordjournals.org/content/28/11/1530.long) produces extensive metrics for RNA-Seq runs. Not all of the sections will apply to the Ion Proton protocol.
-Most interesting might be the rRNA rate in the multisample [summary document](RNASEQC_DIR//countMetrics.html).
+Most interesting might be the rRNA rate in the multisample [summary document]({{SLINK}}/RNASEQC_DIR//countMetrics.html).
 > [RNA-SeQC home]({{SLINK}}/RNASEQC_DIR/index.html)
 
 > [RNA-SeQC reports]({{SLINK}}/RNASEQC_DIR//countMetrics.html)
@@ -56,6 +56,20 @@ Most interesting might be the rRNA rate in the multisample [summary document](RN
 > [muscleResults.csv]({{SLINK}}/muscleResults.csv)
 
 > [heartResults.csv]({{SLINK}}/heartResults.csv)
+
+### Convenience tables for Metcore aka GeneGo
+These are just lists of Ensembl identifiers
+> [muscle.top50.pval.txt]({{SLINK}}/muscle.top50.pval.txt)
+
+> [muscle.top50.up.txt]({{SLINK}}/muscle.top50.up.txt)    
+
+> [muscle.top50.down.txt]({{SLINK}}/muscle.top50.down.txt)    
+
+> [heart.top50.pval.txt]({{SLINK}}/heart.top50.pval.txt)    
+
+> [heart.top50.up.txt]({{SLINK}}/heart.top50.up.txt)    
+
+> [heart.top50.down.txt]({{SLINK}}/heart.top50.down.txt)    
 
 ### GAGE
 GAGE was used to generate GO and KEGG pathway analysis using a ranked list analysis (read counts are taken into consideration)
@@ -150,6 +164,6 @@ Code used to generate this analysis is located here [http://github.research.chop
 
 ### Git hash
 This should match the hash index on the last page of your report.
-```69e42e5d0ed23320035b83c8e26f08aacd26b916```
+```5960db29a276dea026a2aa1205532723d3041ff7```
 
-Last modified ```2015-04-07 13:06:44```
+Last modified ```2015-04-08 11:34:07```
