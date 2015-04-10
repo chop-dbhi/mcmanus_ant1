@@ -558,19 +558,11 @@ Most interesting might be the rRNA rate in the multisample [summary document]({0
 
 > [heartResults.csv]({0}/heartResults.csv)
 
-### Convenience tables for Metcore aka GeneGo
-These are just lists of Ensembl identifiers
-> [muscle.top50.pval.txt]({0}/muscle.top50.pval.txt)
+### Convenience tables for Metacore aka GeneGo
+These are just lists of entrez identifiers, fold changes, and padj
+> [heart.genego.xls]({0}/heart.genego.xls)
 
-> [muscle.top50.up.txt]({0}/muscle.top50.up.txt)    
-
-> [muscle.top50.down.txt]({0}/muscle.top50.down.txt)    
-
-> [heart.top50.pval.txt]({0}/heart.top50.pval.txt)    
-
-> [heart.top50.up.txt]({0}/heart.top50.up.txt)    
-
-> [heart.top50.down.txt]({0}/heart.top50.down.txt)    
+> [muscle.genego.xls]({0}/muscle.genego.xls)    
 
 ### GAGE
 GAGE was used to generate GO and KEGG pathway analysis using a ranked list analysis (read counts are taken into consideration)
