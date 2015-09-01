@@ -38,17 +38,161 @@
 		
 #### RNA-SeQC Output
 [RNA-SeQC](http://bioinformatics.oxfordjournals.org/content/28/11/1530.long) produces extensive metrics for RNA-Seq runs. Not all of the sections will apply to the Ion Proton protocol.
-Most interesting might be the rRNA rate in the multisample [summary document]({{SLINK}}/RNASEQC_DIR//countMetrics.html).
-> [RNA-SeQC home]({{SLINK}}/RNASEQC_DIR/index.html)
+Most interesting might be the rRNA rate in the multisample [summary document]({0}/{1}/countMetrics.html).
+> [RNA-SeQC home]({0}/{2})
 
-> [RNA-SeQC reports]({{SLINK}}/RNASEQC_DIR//countMetrics.html)
+> [RNA-SeQC reports]({0}/{1}/countMetrics.html)
 
-> [RNA-SeQC reports]({{SLINK}}/RNASEQC_DIR//report.html)
+> [RNA-SeQC reports]({0}/{1}/report.html)
 
 ### HT-Seq Counts
-> [Raw HT-Seq Counts]({{SLINK}}/raw_counts.tab.txt)
+> [Raw HT-Seq Counts]({0}/raw_counts.tab.txt)
 
-> [ERCC Spike-in Normalized Counts]({{SLINK}}/normalized_counts.tab.txt)
+> [ERCC Spike-in Normalized Counts]({0}/normalized_counts.tab.txt)
+
+### Gene Reads
+For downstream amplification purposes, reads aligning to the following genes were extracted from the alignments
+
+> MT-ND1 ENSMUSG00000064341
+
+> MT-ND3 ENSMUSG00000064360
+
+> MT-ND6 ENSMUSG00000064368
+
+> MT-CYTB ENSMUSG00000064370
+
+Note: Many of these reads are soft-clipped (i.e. a local alignment in which end of the read does not align with reference).
+Also the intersection rules employed for differential expression are more strict than those used in the extraction. The [intersection-strict](http://www-huber.embl.de/users/anders/HTSeq/doc/count.html) mode was used for DE.
+Counts will be proportional but different than those in [Raw HT-Seq Counts]({0}/raw_counts.tab.txt).
+
+> [`gene_reads/IonXpressRNA_002.R_2013_11_26_13_55_09_user_1PR-8-RNA-Seq_whole_transcriptome.MT-ND1.fa`]({{SLINK}}/gene_reads/IonXpressRNA_002.R_2013_11_26_13_55_09_user_1PR-8-RNA-Seq_whole_transcriptome.MT-ND1.fa)
+
+> [`gene_reads/IonXpressRNA_002.R_2013_11_26_13_55_09_user_1PR-8-RNA-Seq_whole_transcriptome.MT-ND6.fa`]({{SLINK}}/gene_reads/IonXpressRNA_002.R_2013_11_26_13_55_09_user_1PR-8-RNA-Seq_whole_transcriptome.MT-ND6.fa)
+
+> [`gene_reads/IonXpressRNA_002.R_2013_11_26_13_55_09_user_1PR-8-RNA-Seq_whole_transcriptome.MT-ND3.fa`]({{SLINK}}/gene_reads/IonXpressRNA_002.R_2013_11_26_13_55_09_user_1PR-8-RNA-Seq_whole_transcriptome.MT-ND3.fa)
+
+> [`gene_reads/IonXpressRNA_002.R_2013_11_26_13_55_09_user_1PR-8-RNA-Seq_whole_transcriptome.MT-CYTB.fa`]({{SLINK}}/gene_reads/IonXpressRNA_002.R_2013_11_26_13_55_09_user_1PR-8-RNA-Seq_whole_transcriptome.MT-CYTB.fa)
+
+> [`gene_reads/IonXpressRNA_004.R_2013_11_26_20_48_53_user_1PR-9-RNA-Seq_whole_transcriptome.MT-ND1.fa`]({{SLINK}}/gene_reads/IonXpressRNA_004.R_2013_11_26_20_48_53_user_1PR-9-RNA-Seq_whole_transcriptome.MT-ND1.fa)
+
+> [`gene_reads/IonXpressRNA_004.R_2013_11_26_20_48_53_user_1PR-9-RNA-Seq_whole_transcriptome.MT-ND6.fa`]({{SLINK}}/gene_reads/IonXpressRNA_004.R_2013_11_26_20_48_53_user_1PR-9-RNA-Seq_whole_transcriptome.MT-ND6.fa)
+
+> [`gene_reads/IonXpressRNA_004.R_2013_11_26_20_48_53_user_1PR-9-RNA-Seq_whole_transcriptome.MT-ND3.fa`]({{SLINK}}/gene_reads/IonXpressRNA_004.R_2013_11_26_20_48_53_user_1PR-9-RNA-Seq_whole_transcriptome.MT-ND3.fa)
+
+> [`gene_reads/IonXpressRNA_004.R_2013_11_26_20_48_53_user_1PR-9-RNA-Seq_whole_transcriptome.MT-CYTB.fa`]({{SLINK}}/gene_reads/IonXpressRNA_004.R_2013_11_26_20_48_53_user_1PR-9-RNA-Seq_whole_transcriptome.MT-CYTB.fa)
+
+> [`gene_reads/IonXpressRNA_006.R_2013_12_04_09_37_33_1PR-10-RNA-Seq_whole_transcriptome_76303.MT-ND1.fa`]({{SLINK}}/gene_reads/IonXpressRNA_006.R_2013_12_04_09_37_33_1PR-10-RNA-Seq_whole_transcriptome_76303.MT-ND1.fa)
+
+> [`gene_reads/IonXpressRNA_006.R_2013_12_04_09_37_33_1PR-10-RNA-Seq_whole_transcriptome_76303.MT-ND6.fa`]({{SLINK}}/gene_reads/IonXpressRNA_006.R_2013_12_04_09_37_33_1PR-10-RNA-Seq_whole_transcriptome_76303.MT-ND6.fa)
+
+> [`gene_reads/IonXpressRNA_006.R_2013_12_04_09_37_33_1PR-10-RNA-Seq_whole_transcriptome_76303.MT-ND3.fa`]({{SLINK}}/gene_reads/IonXpressRNA_006.R_2013_12_04_09_37_33_1PR-10-RNA-Seq_whole_transcriptome_76303.MT-ND3.fa)
+
+> [`gene_reads/IonXpressRNA_006.R_2013_12_04_09_37_33_1PR-10-RNA-Seq_whole_transcriptome_76303.MT-CYTB.fa`]({{SLINK}}/gene_reads/IonXpressRNA_006.R_2013_12_04_09_37_33_1PR-10-RNA-Seq_whole_transcriptome_76303.MT-CYTB.fa)
+
+> [`gene_reads/IonXpressRNA_008.R_2013_12_06_12_45_12_user_1PR-11-RNA-Seq_whole_transcriptome.MT-ND1.fa`]({{SLINK}}/gene_reads/IonXpressRNA_008.R_2013_12_06_12_45_12_user_1PR-11-RNA-Seq_whole_transcriptome.MT-ND1.fa)
+
+> [`gene_reads/IonXpressRNA_008.R_2013_12_06_12_45_12_user_1PR-11-RNA-Seq_whole_transcriptome.MT-ND6.fa`]({{SLINK}}/gene_reads/IonXpressRNA_008.R_2013_12_06_12_45_12_user_1PR-11-RNA-Seq_whole_transcriptome.MT-ND6.fa)
+
+> [`gene_reads/IonXpressRNA_008.R_2013_12_06_12_45_12_user_1PR-11-RNA-Seq_whole_transcriptome.MT-ND3.fa`]({{SLINK}}/gene_reads/IonXpressRNA_008.R_2013_12_06_12_45_12_user_1PR-11-RNA-Seq_whole_transcriptome.MT-ND3.fa)
+
+> [`gene_reads/IonXpressRNA_008.R_2013_12_06_12_45_12_user_1PR-11-RNA-Seq_whole_transcriptome.MT-CYTB.fa`]({{SLINK}}/gene_reads/IonXpressRNA_008.R_2013_12_06_12_45_12_user_1PR-11-RNA-Seq_whole_transcriptome.MT-CYTB.fa)
+
+> [`gene_reads/IonXpressRNA_001.R_2013_11_26_13_55_09_user_1PR-8-RNA-Seq_whole_transcriptome.MT-ND1.fa`]({{SLINK}}/gene_reads/IonXpressRNA_001.R_2013_11_26_13_55_09_user_1PR-8-RNA-Seq_whole_transcriptome.MT-ND1.fa)
+
+> [`gene_reads/IonXpressRNA_001.R_2013_11_26_13_55_09_user_1PR-8-RNA-Seq_whole_transcriptome.MT-ND6.fa`]({{SLINK}}/gene_reads/IonXpressRNA_001.R_2013_11_26_13_55_09_user_1PR-8-RNA-Seq_whole_transcriptome.MT-ND6.fa)
+
+> [`gene_reads/IonXpressRNA_001.R_2013_11_26_13_55_09_user_1PR-8-RNA-Seq_whole_transcriptome.MT-ND3.fa`]({{SLINK}}/gene_reads/IonXpressRNA_001.R_2013_11_26_13_55_09_user_1PR-8-RNA-Seq_whole_transcriptome.MT-ND3.fa)
+
+> [`gene_reads/IonXpressRNA_001.R_2013_11_26_13_55_09_user_1PR-8-RNA-Seq_whole_transcriptome.MT-CYTB.fa`]({{SLINK}}/gene_reads/IonXpressRNA_001.R_2013_11_26_13_55_09_user_1PR-8-RNA-Seq_whole_transcriptome.MT-CYTB.fa)
+
+> [`gene_reads/IonXpressRNA_003.R_2013_11_26_20_48_53_user_1PR-9-RNA-Seq_whole_transcriptome.MT-ND1.fa`]({{SLINK}}/gene_reads/IonXpressRNA_003.R_2013_11_26_20_48_53_user_1PR-9-RNA-Seq_whole_transcriptome.MT-ND1.fa)
+
+> [`gene_reads/IonXpressRNA_003.R_2013_11_26_20_48_53_user_1PR-9-RNA-Seq_whole_transcriptome.MT-ND6.fa`]({{SLINK}}/gene_reads/IonXpressRNA_003.R_2013_11_26_20_48_53_user_1PR-9-RNA-Seq_whole_transcriptome.MT-ND6.fa)
+
+> [`gene_reads/IonXpressRNA_003.R_2013_11_26_20_48_53_user_1PR-9-RNA-Seq_whole_transcriptome.MT-ND3.fa`]({{SLINK}}/gene_reads/IonXpressRNA_003.R_2013_11_26_20_48_53_user_1PR-9-RNA-Seq_whole_transcriptome.MT-ND3.fa)
+
+> [`gene_reads/IonXpressRNA_003.R_2013_11_26_20_48_53_user_1PR-9-RNA-Seq_whole_transcriptome.MT-CYTB.fa`]({{SLINK}}/gene_reads/IonXpressRNA_003.R_2013_11_26_20_48_53_user_1PR-9-RNA-Seq_whole_transcriptome.MT-CYTB.fa)
+
+> [`gene_reads/IonXpressRNA_005.R_2013_12_04_09_37_33_1PR-10-RNA-Seq_whole_transcriptome_76303.MT-ND1.fa`]({{SLINK}}/gene_reads/IonXpressRNA_005.R_2013_12_04_09_37_33_1PR-10-RNA-Seq_whole_transcriptome_76303.MT-ND1.fa)
+
+> [`gene_reads/IonXpressRNA_005.R_2013_12_04_09_37_33_1PR-10-RNA-Seq_whole_transcriptome_76303.MT-ND6.fa`]({{SLINK}}/gene_reads/IonXpressRNA_005.R_2013_12_04_09_37_33_1PR-10-RNA-Seq_whole_transcriptome_76303.MT-ND6.fa)
+
+> [`gene_reads/IonXpressRNA_005.R_2013_12_04_09_37_33_1PR-10-RNA-Seq_whole_transcriptome_76303.MT-ND3.fa`]({{SLINK}}/gene_reads/IonXpressRNA_005.R_2013_12_04_09_37_33_1PR-10-RNA-Seq_whole_transcriptome_76303.MT-ND3.fa)
+
+> [`gene_reads/IonXpressRNA_005.R_2013_12_04_09_37_33_1PR-10-RNA-Seq_whole_transcriptome_76303.MT-CYTB.fa`]({{SLINK}}/gene_reads/IonXpressRNA_005.R_2013_12_04_09_37_33_1PR-10-RNA-Seq_whole_transcriptome_76303.MT-CYTB.fa)
+
+> [`gene_reads/IonXpressRNA_007.R_2013_12_06_12_45_12_user_1PR-11-RNA-Seq_whole_transcriptome.MT-ND1.fa`]({{SLINK}}/gene_reads/IonXpressRNA_007.R_2013_12_06_12_45_12_user_1PR-11-RNA-Seq_whole_transcriptome.MT-ND1.fa)
+
+> [`gene_reads/IonXpressRNA_007.R_2013_12_06_12_45_12_user_1PR-11-RNA-Seq_whole_transcriptome.MT-ND6.fa`]({{SLINK}}/gene_reads/IonXpressRNA_007.R_2013_12_06_12_45_12_user_1PR-11-RNA-Seq_whole_transcriptome.MT-ND6.fa)
+
+> [`gene_reads/IonXpressRNA_007.R_2013_12_06_12_45_12_user_1PR-11-RNA-Seq_whole_transcriptome.MT-ND3.fa`]({{SLINK}}/gene_reads/IonXpressRNA_007.R_2013_12_06_12_45_12_user_1PR-11-RNA-Seq_whole_transcriptome.MT-ND3.fa)
+
+> [`gene_reads/IonXpressRNA_007.R_2013_12_06_12_45_12_user_1PR-11-RNA-Seq_whole_transcriptome.MT-CYTB.fa`]({{SLINK}}/gene_reads/IonXpressRNA_007.R_2013_12_06_12_45_12_user_1PR-11-RNA-Seq_whole_transcriptome.MT-CYTB.fa)
+
+> [`gene_reads/IonXpressRNA_010.R_2013_12_19_16_11_21_user_1PR-13-RNA-Seq_whole_transcriptome.MT-ND1.fa`]({{SLINK}}/gene_reads/IonXpressRNA_010.R_2013_12_19_16_11_21_user_1PR-13-RNA-Seq_whole_transcriptome.MT-ND1.fa)
+
+> [`gene_reads/IonXpressRNA_010.R_2013_12_19_16_11_21_user_1PR-13-RNA-Seq_whole_transcriptome.MT-ND6.fa`]({{SLINK}}/gene_reads/IonXpressRNA_010.R_2013_12_19_16_11_21_user_1PR-13-RNA-Seq_whole_transcriptome.MT-ND6.fa)
+
+> [`gene_reads/IonXpressRNA_010.R_2013_12_19_16_11_21_user_1PR-13-RNA-Seq_whole_transcriptome.MT-ND3.fa`]({{SLINK}}/gene_reads/IonXpressRNA_010.R_2013_12_19_16_11_21_user_1PR-13-RNA-Seq_whole_transcriptome.MT-ND3.fa)
+
+> [`gene_reads/IonXpressRNA_010.R_2013_12_19_16_11_21_user_1PR-13-RNA-Seq_whole_transcriptome.MT-CYTB.fa`]({{SLINK}}/gene_reads/IonXpressRNA_010.R_2013_12_19_16_11_21_user_1PR-13-RNA-Seq_whole_transcriptome.MT-CYTB.fa)
+
+> [`gene_reads/IonXpressRNA_012.R_2013_12_18_20_25_40_user_1PR-12-RNA-Seq_whole_transcriptome.MT-ND1.fa`]({{SLINK}}/gene_reads/IonXpressRNA_012.R_2013_12_18_20_25_40_user_1PR-12-RNA-Seq_whole_transcriptome.MT-ND1.fa)
+
+> [`gene_reads/IonXpressRNA_012.R_2013_12_18_20_25_40_user_1PR-12-RNA-Seq_whole_transcriptome.MT-ND6.fa`]({{SLINK}}/gene_reads/IonXpressRNA_012.R_2013_12_18_20_25_40_user_1PR-12-RNA-Seq_whole_transcriptome.MT-ND6.fa)
+
+> [`gene_reads/IonXpressRNA_012.R_2013_12_18_20_25_40_user_1PR-12-RNA-Seq_whole_transcriptome.MT-ND3.fa`]({{SLINK}}/gene_reads/IonXpressRNA_012.R_2013_12_18_20_25_40_user_1PR-12-RNA-Seq_whole_transcriptome.MT-ND3.fa)
+
+> [`gene_reads/IonXpressRNA_012.R_2013_12_18_20_25_40_user_1PR-12-RNA-Seq_whole_transcriptome.MT-CYTB.fa`]({{SLINK}}/gene_reads/IonXpressRNA_012.R_2013_12_18_20_25_40_user_1PR-12-RNA-Seq_whole_transcriptome.MT-CYTB.fa)
+
+> [`gene_reads/IonXpressRNA_014.R_2013_12_20_12_50_23_user_1PR-14-RNA-Seq_whole_transcriptome.MT-ND1.fa`]({{SLINK}}/gene_reads/IonXpressRNA_014.R_2013_12_20_12_50_23_user_1PR-14-RNA-Seq_whole_transcriptome.MT-ND1.fa)
+
+> [`gene_reads/IonXpressRNA_014.R_2013_12_20_12_50_23_user_1PR-14-RNA-Seq_whole_transcriptome.MT-ND6.fa`]({{SLINK}}/gene_reads/IonXpressRNA_014.R_2013_12_20_12_50_23_user_1PR-14-RNA-Seq_whole_transcriptome.MT-ND6.fa)
+
+> [`gene_reads/IonXpressRNA_014.R_2013_12_20_12_50_23_user_1PR-14-RNA-Seq_whole_transcriptome.MT-ND3.fa`]({{SLINK}}/gene_reads/IonXpressRNA_014.R_2013_12_20_12_50_23_user_1PR-14-RNA-Seq_whole_transcriptome.MT-ND3.fa)
+
+> [`gene_reads/IonXpressRNA_014.R_2013_12_20_12_50_23_user_1PR-14-RNA-Seq_whole_transcriptome.MT-CYTB.fa`]({{SLINK}}/gene_reads/IonXpressRNA_014.R_2013_12_20_12_50_23_user_1PR-14-RNA-Seq_whole_transcriptome.MT-CYTB.fa)
+
+> [`gene_reads/IonXpressRNA_016.R_2013_12_21_20_34_59_user_1PR-15-RNA-Seq_whole_transcriptome.MT-ND1.fa`]({{SLINK}}/gene_reads/IonXpressRNA_016.R_2013_12_21_20_34_59_user_1PR-15-RNA-Seq_whole_transcriptome.MT-ND1.fa)
+
+> [`gene_reads/IonXpressRNA_016.R_2013_12_21_20_34_59_user_1PR-15-RNA-Seq_whole_transcriptome.MT-ND6.fa`]({{SLINK}}/gene_reads/IonXpressRNA_016.R_2013_12_21_20_34_59_user_1PR-15-RNA-Seq_whole_transcriptome.MT-ND6.fa)
+
+> [`gene_reads/IonXpressRNA_016.R_2013_12_21_20_34_59_user_1PR-15-RNA-Seq_whole_transcriptome.MT-ND3.fa`]({{SLINK}}/gene_reads/IonXpressRNA_016.R_2013_12_21_20_34_59_user_1PR-15-RNA-Seq_whole_transcriptome.MT-ND3.fa)
+
+> [`gene_reads/IonXpressRNA_016.R_2013_12_21_20_34_59_user_1PR-15-RNA-Seq_whole_transcriptome.MT-CYTB.fa`]({{SLINK}}/gene_reads/IonXpressRNA_016.R_2013_12_21_20_34_59_user_1PR-15-RNA-Seq_whole_transcriptome.MT-CYTB.fa)
+
+> [`gene_reads/IonXpressRNA_009.R_2013_12_19_16_11_21_user_1PR-13-RNA-Seq_whole_transcriptome.MT-ND1.fa`]({{SLINK}}/gene_reads/IonXpressRNA_009.R_2013_12_19_16_11_21_user_1PR-13-RNA-Seq_whole_transcriptome.MT-ND1.fa)
+
+> [`gene_reads/IonXpressRNA_009.R_2013_12_19_16_11_21_user_1PR-13-RNA-Seq_whole_transcriptome.MT-ND6.fa`]({{SLINK}}/gene_reads/IonXpressRNA_009.R_2013_12_19_16_11_21_user_1PR-13-RNA-Seq_whole_transcriptome.MT-ND6.fa)
+
+> [`gene_reads/IonXpressRNA_009.R_2013_12_19_16_11_21_user_1PR-13-RNA-Seq_whole_transcriptome.MT-ND3.fa`]({{SLINK}}/gene_reads/IonXpressRNA_009.R_2013_12_19_16_11_21_user_1PR-13-RNA-Seq_whole_transcriptome.MT-ND3.fa)
+
+> [`gene_reads/IonXpressRNA_009.R_2013_12_19_16_11_21_user_1PR-13-RNA-Seq_whole_transcriptome.MT-CYTB.fa`]({{SLINK}}/gene_reads/IonXpressRNA_009.R_2013_12_19_16_11_21_user_1PR-13-RNA-Seq_whole_transcriptome.MT-CYTB.fa)
+
+> [`gene_reads/IonXpressRNA_011.R_2013_12_18_20_25_40_user_1PR-12-RNA-Seq_whole_transcriptome.MT-ND1.fa`]({{SLINK}}/gene_reads/IonXpressRNA_011.R_2013_12_18_20_25_40_user_1PR-12-RNA-Seq_whole_transcriptome.MT-ND1.fa)
+
+> [`gene_reads/IonXpressRNA_011.R_2013_12_18_20_25_40_user_1PR-12-RNA-Seq_whole_transcriptome.MT-ND6.fa`]({{SLINK}}/gene_reads/IonXpressRNA_011.R_2013_12_18_20_25_40_user_1PR-12-RNA-Seq_whole_transcriptome.MT-ND6.fa)
+
+> [`gene_reads/IonXpressRNA_011.R_2013_12_18_20_25_40_user_1PR-12-RNA-Seq_whole_transcriptome.MT-ND3.fa`]({{SLINK}}/gene_reads/IonXpressRNA_011.R_2013_12_18_20_25_40_user_1PR-12-RNA-Seq_whole_transcriptome.MT-ND3.fa)
+
+> [`gene_reads/IonXpressRNA_011.R_2013_12_18_20_25_40_user_1PR-12-RNA-Seq_whole_transcriptome.MT-CYTB.fa`]({{SLINK}}/gene_reads/IonXpressRNA_011.R_2013_12_18_20_25_40_user_1PR-12-RNA-Seq_whole_transcriptome.MT-CYTB.fa)
+
+> [`gene_reads/IonXpressRNA_013.R_2013_12_20_12_50_23_user_1PR-14-RNA-Seq_whole_transcriptome.MT-ND1.fa`]({{SLINK}}/gene_reads/IonXpressRNA_013.R_2013_12_20_12_50_23_user_1PR-14-RNA-Seq_whole_transcriptome.MT-ND1.fa)
+
+> [`gene_reads/IonXpressRNA_013.R_2013_12_20_12_50_23_user_1PR-14-RNA-Seq_whole_transcriptome.MT-ND6.fa`]({{SLINK}}/gene_reads/IonXpressRNA_013.R_2013_12_20_12_50_23_user_1PR-14-RNA-Seq_whole_transcriptome.MT-ND6.fa)
+
+> [`gene_reads/IonXpressRNA_013.R_2013_12_20_12_50_23_user_1PR-14-RNA-Seq_whole_transcriptome.MT-ND3.fa`]({{SLINK}}/gene_reads/IonXpressRNA_013.R_2013_12_20_12_50_23_user_1PR-14-RNA-Seq_whole_transcriptome.MT-ND3.fa)
+
+> [`gene_reads/IonXpressRNA_013.R_2013_12_20_12_50_23_user_1PR-14-RNA-Seq_whole_transcriptome.MT-CYTB.fa`]({{SLINK}}/gene_reads/IonXpressRNA_013.R_2013_12_20_12_50_23_user_1PR-14-RNA-Seq_whole_transcriptome.MT-CYTB.fa)
+
+> [`gene_reads/IonXpressRNA_015.R_2013_12_21_20_34_59_user_1PR-15-RNA-Seq_whole_transcriptome.MT-ND1.fa`]({{SLINK}}/gene_reads/IonXpressRNA_015.R_2013_12_21_20_34_59_user_1PR-15-RNA-Seq_whole_transcriptome.MT-ND1.fa)
+
+> [`gene_reads/IonXpressRNA_015.R_2013_12_21_20_34_59_user_1PR-15-RNA-Seq_whole_transcriptome.MT-ND6.fa`]({{SLINK}}/gene_reads/IonXpressRNA_015.R_2013_12_21_20_34_59_user_1PR-15-RNA-Seq_whole_transcriptome.MT-ND6.fa)
+
+> [`gene_reads/IonXpressRNA_015.R_2013_12_21_20_34_59_user_1PR-15-RNA-Seq_whole_transcriptome.MT-ND3.fa`]({{SLINK}}/gene_reads/IonXpressRNA_015.R_2013_12_21_20_34_59_user_1PR-15-RNA-Seq_whole_transcriptome.MT-ND3.fa)
+
+> [`gene_reads/IonXpressRNA_015.R_2013_12_21_20_34_59_user_1PR-15-RNA-Seq_whole_transcriptome.MT-CYTB.fa`]({{SLINK}}/gene_reads/IonXpressRNA_015.R_2013_12_21_20_34_59_user_1PR-15-RNA-Seq_whole_transcriptome.MT-CYTB.fa)
+
 
 ### Differential expression analysis report and significantly DE gene tables
 > [diffExp.pdf]({{SLINK}}/diffExp.pdf)
@@ -156,6 +300,6 @@ Code used to generate this analysis is located here [http://github.research.chop
 
 ### Git hash
 This should match the hash index on the last page of your report.
-```15fdfcee47919155f4bfaf8fb1932ec1926f25bd```
+```35e2eb6923e1eebee1e720ae6a2a8458e2e979ff```
 
-Last modified ```2015-04-10 09:59:00```
+Last modified ```2015-09-01 11:35:12```

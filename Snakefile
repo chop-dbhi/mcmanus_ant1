@@ -55,6 +55,8 @@ PRETTY_NAMES = ['{0}_{1}'.format(sample, i)
 
 DIRS = ['mapped/', 'counts/', 'cufflinks/']
 MAPPED = ['mapped/' + f + '.bam' for f in SAMPLES]
+GENES = ['MT-ND1','MT-ND6','MT-ND3','MT-CYTB']
+GENEREADS = ['gene_reads/' + f + '.' + g + '.fa' for f in SAMPLES for g in GENES]
 GATKED = ['mapped/' + f + '.sorted.gatk.bam.bai' for f in SAMPLES]
 COUNTS = ['counts/' + f + '.tsv' for f in SAMPLES]
 CUFFED = ['cufflinks/' + f + '/transcripts.gtf' for f in SAMPLES]
@@ -81,6 +83,10 @@ rule all:
 rule gagefiles:
     input:
         GAGE_FILES
+
+rule genereads:
+    input:
+        GENEREADS
 
 rule dirs:
     output:
@@ -188,6 +194,24 @@ rule samtobam:
         1
     shell:
         "{SAMTOOLS} view -bS {input} > {output}"
+
+rule getbed:
+     output:
+        "{gene}.bed"
+     shell:
+        """curl -s http://rest.ensembl.org/lookup/symbol/mus_musculus/{wildcards.gene}?content-type=application/json | ./jq-linux64 -r '.| [.seq_region_name, (.start|tostring), (.end|tostring)] | join("\t")' > {output}"""
+
+# extract reads mapping to genes of interest
+# one-liner c/o Eric Lim
+rule readsfrombamgene:
+    input:
+        bam = "mapped/{sample}.sorted.bam", bed = "{gene}.bed"
+    output:
+        "gene_reads/{sample}.{gene}.fa"
+    shell:
+        """
+cat {input.bed} | {BEDTOOLS}/bedtools intersect -abam {input.bam} -b stdin | {SAMTOOLS} view - | grep -v ^@ | awk '{{print ">"$1"\\n"$10}}' > {output}
+        """
 
 #### ERCC #####
 rule ERCCnix:
@@ -551,6 +575,25 @@ Most interesting might be the rRNA rate in the multisample [summary document]({0
 
 > [ERCC Spike-in Normalized Counts]({0}/normalized_counts.tab.txt)
 
+### Gene Reads
+For downstream amplification purposes, reads aligning to the following genes were extracted from the alignments
+
+> MT-ND1 ENSMUSG00000064341
+
+> MT-ND3 ENSMUSG00000064360
+
+> MT-ND6 ENSMUSG00000064368
+
+> MT-CYTB ENSMUSG00000064370
+
+Note: Many of these reads are soft-clipped (i.e. a local alignment in which end of the read does not align with reference).
+Also the intersection rules employed for differential expression are more strict than those used in the extraction. The [intersection-strict](http://www-huber.embl.de/users/anders/HTSeq/doc/count.html) mode was used for DE.
+Counts will be proportional but different than those in [Raw HT-Seq Counts]({0}/raw_counts.tab.txt).
+
+""")
+            for s in GENEREADS:
+                outfile.write("> [`{0}`]({1}/{0})\n\n".format(s, SLINK))
+            outfile.write("""
 ### Differential expression analysis report and significantly DE gene tables
 > [diffExp.pdf]({0}/diffExp.pdf)
 
