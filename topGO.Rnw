@@ -47,11 +47,13 @@ library(xtable)
 @
 
 \section{Introduction}
-TopGO \cite{Anders} provides additional tools for exploring GO enrichment.
+TopGO \cite{Alexa} provides additional tools for exploring GO enrichment.
 
 The classicFisher is a filtered list approach - enrichment is strictly based on counts of genes associated with the GO terms.
 
 Kolmogorov-Smirnov test is supposed to use differential p-values to weight enrichment. The elim method was design to be more conservative then the classic method.
+
+The "Significant" column is not relevant to the most up and down regulated tables - since those rely on running TopGO using the fold change metric instead of p.val.
 
 <<topgo,results=hide,echo=F>>=
 muscleGos<-get(load("muscleGO.RData"))
