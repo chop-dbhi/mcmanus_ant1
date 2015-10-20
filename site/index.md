@@ -65,7 +65,8 @@ Note: Many of these reads are soft-clipped (i.e. a local alignment in which end 
 Also the intersection rules employed for differential expression are more strict than those used in the extraction. The [intersection-strict](http://www-huber.embl.de/users/anders/HTSeq/doc/count.html) mode was used for DE.
 Counts will be proportional but different than those in [Raw HT-Seq Counts]({0}/raw_counts.tab.txt).
 
-> [Gene reads]({{SLINK}}/gene_reads)
+For brevity these output are hidden from this report.
+
 ### Differential expression analysis report and significantly DE gene tables
 > [diffExp.pdf]({{SLINK}}/diffExp.pdf)
 
@@ -172,6 +173,6 @@ Code used to generate this analysis is located here [http://github.research.chop
 
 ### Git hash
 This should match the hash index on the last page of your report.
-```dee8dd3de3bfb55bf494071ad9569985732b1d3e```
+```b0bb7f103ab48ae3ee0c93e07b60f583606fb527```
 
-Last modified ```2015-10-20 15:48:40```
+Last modified ```2015-10-20 15:54:01```
