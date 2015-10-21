@@ -1,8 +1,1 @@
----
-layout: container
----
-
-<div class=col-sm-12>
-    {% include page_header.html %}    
-    {{ content }}
-</div>
+/nas/pb/leipzig/martin/src/site/_layouts/wide.md

@@ -147,7 +147,7 @@ row.names(results)<-results$ensembl_gene_id
 res<-cbind(results[testres$id,"external_gene_name"],testres)
 names(res)[1]<-"gene"
 write.csv(res,file=resfile)
-
+save(res,file=paste(resfile."rdata",sep="."),compress=TRUE)
 #genego convenience
 
 

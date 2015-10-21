@@ -70,11 +70,13 @@ BIGWIG_NAMES = [ f + '.bw' for f in SAMPLES]
 QCED = ['fastqc/' + f + '.trimmed_fastqc.zip' for f in SAMPLES]
 ERCC = ['ercc/' + f + '.idxstats' for f in SAMPLES]
 GO_DOMAINS = ['biological_process', 'cellular_component', 'molecular_function']
-GAGE_GO_FILES = ['GAGE/GO.' + tissue + '.ant1.' + domain + '.' + direction + '.csv' for tissue in ['heart', 'muscle']
+GAGE_GO_FILES = ['GAGE/GO.' + tissue + '.ant1.' + domain + '.' + direction + '.html' for tissue in ['heart', 'muscle']
+                 for domain in GO_DOMAINS for direction in ['up', 'down']]
+GAGE_GO_CSV_FILES = ['GAGE/GO.' + tissue + '.ant1.' + domain + '.' + direction + '.csv' for tissue in ['heart', 'muscle']
                  for domain in GO_DOMAINS for direction in ['up', 'down']]
 GAGE_KEGG_FILES = ['GAGE/KEGG.' + tissue +
                    '.ant1.signaling_or_metabolism_pathways.both.csv' for tissue in ['heart', 'muscle']]
-GAGE_FILES = GAGE_GO_FILES + GAGE_KEGG_FILES
+GAGE_FILES = GAGE_GO_FILES + GAGE_GO_CSV_FILES + GAGE_KEGG_FILES
 
 rule all:
     input:
@@ -128,7 +130,7 @@ rule map:
     input:
         sample = "raw/{sample}.trimmed.fastq.gz", starref = STARREFDIR, gtf = GTFFILE
     output:
-        "mapped/{sample}.sam"
+        temp("mapped/{sample}.sam")
     threads:
         24
     shell:
@@ -546,7 +548,8 @@ COLORS = """
 
 rule siteindex:
     input:
-        "Snakefile", BIGWIGS, "diffExp.pdf", "topGO.pdf", QCED, RNASEQC_INDEX
+        "Snakefile"
+	#, BIGWIGS, "diffExp.pdf", "topGO.pdf", QCED, RNASEQC_INDEX
     output:
         "site/index.md"
     run:
@@ -590,9 +593,11 @@ Note: Many of these reads are soft-clipped (i.e. a local alignment in which end 
 Also the intersection rules employed for differential expression are more strict than those used in the extraction. The [intersection-strict](http://www-huber.embl.de/users/anders/HTSeq/doc/count.html) mode was used for DE.
 Counts will be proportional but different than those in [Raw HT-Seq Counts]({0}/raw_counts.tab.txt).
 
+For brevity these output are hidden from this report.
 """)
-            for s in GENEREADS:
-                outfile.write("> [`{0}`]({1}/{0})\n\n".format(s, SLINK))
+            #outfile.write("> [Gene reads]({0}/gene_reads)".format(SLINK))
+            #for s in GENEREADS:
+            #    outfile.write("> [`{0}`]({1}/{0})\n\n".format(s, SLINK))
             outfile.write("""
 ### Differential expression analysis report and significantly DE gene tables
 > [diffExp.pdf]({0}/diffExp.pdf)
