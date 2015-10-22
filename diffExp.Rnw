@@ -201,7 +201,7 @@ print(myXtableERCC,include.rownames=FALSE, tabular.environment = "longtable", fl
 \subsection{DESeq}
 A reanalysis of the non-normalized count data was performed using the
 R-based RNA-Seq analysis package DESeq \cite{Anders} in order to
-detect differential expression between normal and retinoblastoma cells.
+detect differential expression between normal and treatment.
 
 This report uses DESeq version \Sexpr{sessInfo$otherPkgs$DESeq$Version}.
 
