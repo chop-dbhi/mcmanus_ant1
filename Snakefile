@@ -600,7 +600,7 @@ For brevity these output are hidden from this report.
             #    outfile.write("> [`{0}`]({1}/{0})\n\n".format(s, SLINK))
             outfile.write("""
 ### Differential expression analysis report and significantly DE gene tables
-> [diffExp.pdf]({0}/diffExp.pdf)
+> [diffExp.html](diffExp.html)
 
 > [muscleResults.csv]({0}/muscleResults.csv)
 
