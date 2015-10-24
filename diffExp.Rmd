@@ -1,0 +1,291 @@
+---
+title: "Ant1-KO Differential Expression"
+author: "Jeremy Leipzig"
+date: "10/22/2015"
+output:
+  html_document:
+    toc: true
+---
+
+```{r libs, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+library(Rsamtools)
+library(Biostrings)
+library(stringr)
+library(dplyr)
+library(tidyr)
+library(reshape)
+library(DESeq)
+library(ggplot2)
+source("/nas/is1/leipzig/ganguly/src/R/concat.R")
+library(org.Mm.eg.db)
+library(biomaRt)
+library(DT)
+library(xlsx)
+```
+
+
+```{r setup, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+sessInfo<-sessionInfo()
+
+aligner<-"STAR"
+reference<-"Ensembl/GRCm38"
+
+load("diffExp.state.RData")
+
+fetchCounts<-function(sampleName){
+  counts<-read.table(concat("counts/",sampleName,".tsv"),col.names=c("txid",sampleName))
+  row.names(counts)<-counts$txid
+  return(counts[,-1,drop=FALSE])
+}
+
+counts <- Reduce(function(a,b){
+        ans <- merge(a,b,by="row.names",all=T)
+        row.names(ans) <- ans[,"Row.names"]
+        ans[,!names(ans) %in% "Row.names"]
+        }, lapply(samples,fetchCounts))
+
+counts<-counts[!(rownames(counts) %in% c("alignment_not_unique","ambiguous")),]
+names(counts)<-c(concat('MUS_ANT_',seq(1:4)),concat('MUS_B6ME_',seq(1:4)),concat('HRT_ANT_',seq(1:4)),concat('HRT_B6ME_',seq(1:4)))
+#MUSCLE_KO  MUSCLE_WT HEART_KO HEART_WT
+conds<-c(rep('MT',4),rep('MN',4),rep('HT',4),rep('HN',4))
+
+#ANT1 KO
+#B6ME WT
+pdata<-data.frame(condition=conds)
+rownames(pdata)<-c(concat('MUS_ANT_',seq(1:4)),concat('MUS_B6ME_',seq(1:4)),concat('HRT_ANT_',seq(1:4)),concat('HRT_B6ME_',seq(1:4)))
+
+#at least minCount from the paired lanes
+minCount<-100
+countsAboveThreshold<-subset(counts,rowSums(counts)>minCount)
+#subset(counts,rowSums(counts[-1])>minCount)
+
+countsMatrix<-as.matrix(countsAboveThreshold)
+rownames(countsMatrix)<-rownames(countsAboveThreshold)
+
+
+starstatsraw<-read.table(STARLOGS,sep="\t",header=TRUE,colClasses=c('character','integer','character','character'))
+row.names(starstatsraw)<-starstatsraw$Sample
+starstats<-starstatsraw[c(MUSCLE_KO,MUSCLE_WT,HEART_KO,HEART_WT),]
+starstats$Sample<-concat(str_sub(starstats$Sample,1,16),'...')
+starstats$cond<-conds
+
+
+cds <- newCountDataSet( countsMatrix, pdata$condition )
+
+ercc.counts<-read.table(ERCC_COUNTS,col.names=c("sample","count"),stringsAsFactors=FALSE)
+
+#these better be in the same order
+stopifnot(samples==ercc.counts$sample)
+sizeFactors(cds)<-ercc.counts$count
+
+write.table(counts(cds, normalized=FALSE),file=RAW_COUNTS,sep="\t",quote=FALSE)
+write.table(counts(cds, normalized=TRUE),file=NORM_COUNTS,sep="\t",quote=FALSE)
+
+#not going to estimate if using ercc
+#cds <- estimateSizeFactors( cds )
+
+#fits: parameteric or local
+#methods: pooled per-condition
+#sharingMode="fit-only"
+#gene-est-only maximum 
+sharingMode<-'maximum'
+method<-'per-condition'
+fits<-'local'
+cds <- estimateDispersions( cds , fitType="local", method=method, sharingMode=sharingMode)
+save(cds,file=CDS_FILE,compress=TRUE)
+myPval<-.01
+```
+
+```{r conductTest, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+testres <- nbinomTest( cds, "MN", "MT")
+resfile<-MUSCLE_RES
+tissue<-"muscle"
+```
+
+```{r annotate, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+#http://www.bioconductor.org/packages/release/bioc/vignettes/biomaRt/inst/doc/biomaRt.pdf
+mart <- useMart(biomart = "ensembl", dataset = "mmusculus_gene_ensembl")
+
+anno_entrez <- getBM(attributes = c("ensembl_gene_id","external_gene_name","entrezgene"),
+                 filters = "ensembl_gene_id", values = testres$id,
+                 mart = mart)
+
+entrez <- getBM(attributes = c("ensembl_gene_id","entrezgene"),
+                 filters = "ensembl_gene_id", values = testres$id,
+                 mart = mart)
+
+human = useMart("ensembl", dataset = "hsapiens_gene_ensembl")
+
+homologs <- getLDS(attributesL = c("entrezgene"),
+       filters = "entrezgene", values = anno_entrez$entrezgene, mart = mart,
+       attributes = c("entrezgene"), martL = human)
+names(homologs)<-c("entrezgene","entrez.human")
+
+cmyo_genes<-get(load("cardiomyopathy.RData"))
+
+names(cmyo_genes)<-c("entrez.human","cardiomyopathy_score")
+
+#in prep for join, remember existing goes on the right
+testres %>% rename(ensembl_gene_id = id) -> testres
+
+#join to cardiomyopathy tables using homologues, remove dups
+anno_entrez %>% join(homologs,by="entrezgene",type="left", match = "first") %>% join(cmyo_genes,by="entrez.human",type="left", match = "first") %>% group_by(ensembl_gene_id) %>% filter(row_number() == 1) %>% join(testres, by="ensembl_gene_id", type="right") -> res
+#arrange(ensembl_gene_id) %>% df[!duplicated(df$date), ]
+
+
+#anno_entrez<-ddply(anno_entrez,.(ensembl_gene_id),function(dt){dt[1,]})
+#row.names(anno_entrez)<-anno_entrez$ensembl_gene_id
+#res<-cbind(anno_entrez[testres$id,"external_gene_name"],testres)
+names(res)[1]<-"gene"
+write.csv(res,file=resfile)
+save(res,file=paste(resfile,"RData",sep="."),compress=TRUE)
+#genego convenience
+
+unique_entrez<-ddply(entrez,.(ensembl_gene_id),function(dt){dt[1,]})
+row.names(unique_entrez)<-unique_entrez$ensembl_gene_id
+genego<-cbind(unique_entrez[res$gene,"entrezgene"],testres)
+names(genego)[1]<-"entrez"
+genego_sig<-subset(genego[,c("entrez","foldChange","padj")],padj < 0.05 & !is.na(entrez))
+write.xlsx(genego_sig, file=paste(tissue,"genego.xls",sep="."), row.names=FALSE)
+```
+
+# Introduction
+## Samples
+Below are results of the STAR mapping. Conditions are M for Muscle, H for Heart, T for Treatment(ANT1), N for Normal (B6ME).
+```{r star, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+datatable(starstats,caption=paste("STAR mapping results"))
+```
+
+# Alignment
+After trimming, transcript counts were generated by a STAR alignment to genomic sequences.
+
+The STAR  used for the samples is as follows:
+```
+{STAR} --genomeDir {STARREFDIR} --outFileNamePrefix {wildcards.sample}_ --readFilesIn {input} --runThreadN 24 
+--genomeLoad NoSharedMemory --outSAMattributes All --outSAMstrandField intronMotif --sjdbGTFfile {GTFFILE}
+```
+
+## Normalization
+ERCC spike-ins were downloaded from [here](http://tools.invitrogen.com/downloads/ERCC92.fa) and used as a reference. Total counts from all 92 sequences are below. These are used for the *sizeFactors* in DESeq such that they become divisors for each sample count.
+```{r ercc, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+datatable(ercc.counts,caption=paste("Total ERCC read counts"))
+```
+
+
+# DESeq
+A reanalysis of the non-normalized count data was performed using the
+R-based RNA-Seq analysis package DESeq [Anders](http://dx.doi.org/10.1038/npre.2010.4282.2) in order to
+detect differential expression between normal and treatment.
+
+This report uses DESeq version `r sessInfo$otherPkgs$DESeq$Version`.
+
+DESeq offers different statistical models and parameters to choose from depending on the data to be analyzed.
+
+Empirical dispersion can be computed using a *pooled*, *per-condition*, or *blind* (no replicates) method.
+
+The following, sharing modes, which determine how much information is used to inform the dispersion of other genes, are available:
+
+* `fit-only` is appropriate for only a few replicates
+* `maximum` is more conservative for three or four replicates, 
+* `gene-est-only` is more aggressive, and is ideal for many replicates
+
+
+For this report, we have used the `r method` method and `r sharingMode` sharing mode.
+
+Only genes with a combined count of `r minCount` among all the samples (both conditions and tissues)
+`r nrow(countsAboveThreshold)` hits fit this criteria.
+
+# Muscle results
+## Significantly DE genes in muscle
+Significantly differentially expressed genes (padj<`r myPval`). Fold change is ANT1/B6ME.
+
+```{r dePval, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+#> names(res)
+# [1] "gene"                 "entrez.human"         "entrezgene"           "external_gene_name"  
+# [5] "cardiomyopathy_score" "baseMean"             "baseMeanA"            "baseMeanB"           
+# [9] "foldChange"           "log2FoldChange"       "pval"                 "padj"                
+res %>% select(gene=external_gene_name,ensid=gene,baseMean,bNorm=baseMeanA,bRB=baseMeanB,fc=foldChange,log2fc=log2FoldChange,pval,padj) %>% filter(padj<myPval) %>% arrange(pval)->resSig
+
+datatable(resSig, caption=paste("Significant (P<",myPval,") differential expression in ANT1 after the correction for multiple testing.",nrow(resSig),"genes."))
+```
+
+## Upregulated genes in muscle
+```{r upreg, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+upRegs<-head(subset(resSig[order(-resSig$fc),],fc>1),n=50)
+
+if(nrow(upRegs)>0){
+  datatable(upRegs,caption=paste("Strongly significantly upregulated genes in ANT1 (top 50)",sep=""))
+}else{
+  print("No significantly upregulated genes")
+}
+```
+
+
+## Downregulated genes in muscle
+```{r downreg, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+downRegs<-head(subset(resSig[order(resSig$fc),],fc<=1),n=50)
+
+if(nrow(downRegs)>0){
+  datatable(downRegs,caption=paste("Strongly significantly downregulated genes in ANT1 (top 50)",sep=""))
+}else{
+  print("No significantly downregulated genes")
+}
+```
+
+## Fold change and significance muscle
+Genes with high fold change may not be significantly differentially expressed simply due to high variance.
+
+```{r fcVsBasemeanmuscle, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+ggplot(res,aes(x=log2(baseMean),y=log2FoldChange))+geom_point(aes(color=padj<.01))
+```
+
+# Heart results
+## Significantly DE genes in heart
+```{r deheart, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+res <- nbinomTest( cds, "HN", "HT")
+resfile<-HEART_RES
+tissue<-"heart"
+```
+
+```{r heart_anno, ref.label='annotate', echo=TRUE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+```
+
+```{r heart_depval, ref.label='dePval', echo=TRUE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+```
+
+## Upregulated genes in heart
+```{r upheart, ref.label='upreg', echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+```
+
+## Downregulated genes in heart
+```{r downheart, ref.label='downreg', echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+```
+
+## Fold Change and Significance heart
+Genes with high fold change may not be significantly differentially expressed simply due to high variance.
+
+```{r fcVsBasemeanheart, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+qplot(log2(res$baseMean),res$log2FoldChange)+aes(color=res$padj<.01)
+```
+
+# Eucludian distances
+```{r euclidheat, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+dists<-dist(t(counts(cds)))
+heatmap( as.matrix( dists ))
+```
+
+# Session info
+The R session information (including the OS info, R version and all
+packages used):
+
+```{r session, results='markup', echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+sessionInfo()
+Sys.time()
+```
+
+```{r git, results='hide', echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+commit<-system("git rev-parse --verify HEAD",intern=TRUE)
+```
+
+Git Commit:
+`r commit`
