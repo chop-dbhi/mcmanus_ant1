@@ -1,7 +1,7 @@
 ---
 title: "Ant1-KO Differential Expression"
 author: "Jeremy Leipzig"
-date: "10/22/2015"
+date: "10/26/2015"
 output:
   html_document:
     toc: true
@@ -11,7 +11,6 @@ output:
 library(Rsamtools)
 library(Biostrings)
 library(stringr)
-library(dplyr)
 library(tidyr)
 library(reshape)
 library(DESeq)
@@ -21,6 +20,7 @@ library(org.Mm.eg.db)
 library(biomaRt)
 library(DT)
 library(xlsx)
+library(dplyr)
 ```
 
 
@@ -62,13 +62,11 @@ countsAboveThreshold<-subset(counts,rowSums(counts)>minCount)
 countsMatrix<-as.matrix(countsAboveThreshold)
 rownames(countsMatrix)<-rownames(countsAboveThreshold)
 
-
 starstatsraw<-read.table(STARLOGS,sep="\t",header=TRUE,colClasses=c('character','integer','character','character'))
 row.names(starstatsraw)<-starstatsraw$Sample
 starstats<-starstatsraw[c(MUSCLE_KO,MUSCLE_WT,HEART_KO,HEART_WT),]
 starstats$Sample<-concat(str_sub(starstats$Sample,1,16),'...')
 starstats$cond<-conds
-
 
 cds <- newCountDataSet( countsMatrix, pdata$condition )
 
@@ -97,56 +95,52 @@ myPval<-.01
 ```
 
 ```{r conductTest, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
-testres <- nbinomTest( cds, "MN", "MT")
+#in prep for join, remember existing goes on the right
+nbinomTest( cds, "MN", "MT") %>% rename(ensembl_gene_id = id) -> testres
 resfile<-MUSCLE_RES
 tissue<-"muscle"
 ```
 
-```{r annotate, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+```{r annosetup, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
 #http://www.bioconductor.org/packages/release/bioc/vignettes/biomaRt/inst/doc/biomaRt.pdf
 mart <- useMart(biomart = "ensembl", dataset = "mmusculus_gene_ensembl")
 
 anno_entrez <- getBM(attributes = c("ensembl_gene_id","external_gene_name","entrezgene"),
-                 filters = "ensembl_gene_id", values = testres$id,
-                 mart = mart)
-
-entrez <- getBM(attributes = c("ensembl_gene_id","entrezgene"),
-                 filters = "ensembl_gene_id", values = testres$id,
+                 filters = "ensembl_gene_id", values = testres$ensembl_gene_id,
                  mart = mart)
 
 human = useMart("ensembl", dataset = "hsapiens_gene_ensembl")
 
-homologs <- getLDS(attributesL = c("entrezgene"),
+get(load("cardiomyopathy.RData")) %>% rename(entrez.human=c2.geneId,cardiomyopathy_score=c0.score)->cmyo_genes
+
+read.table("mseqdr.txt",stringsAsFactors=FALSE) %>% rename(UPGENE=V1) %>% mutate(MSeqDR = paste("<a href=\"https://mseqdr.org/MITO_backend/genes/",UPGENE,"\">",UPGENE,"</a>",sep=""))-> mitogenes
+```
+
+```{r annotate, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+getLDS(attributesL = c("entrezgene"),
        filters = "entrezgene", values = anno_entrez$entrezgene, mart = mart,
-       attributes = c("entrezgene"), martL = human)
-names(homologs)<-c("entrezgene","entrez.human")
-
-cmyo_genes<-get(load("cardiomyopathy.RData"))
-
-names(cmyo_genes)<-c("entrez.human","cardiomyopathy_score")
-
-#in prep for join, remember existing goes on the right
-testres %>% rename(ensembl_gene_id = id) -> testres
+       attributes = c("entrezgene"), martL = human) %>% rename(entrezgene=EntrezGene.ID,entrez.human=EntrezGene.ID.1) -> homologs
 
 #join to cardiomyopathy tables using homologues, remove dups
-anno_entrez %>% join(homologs,by="entrezgene",type="left", match = "first") %>% join(cmyo_genes,by="entrez.human",type="left", match = "first") %>% group_by(ensembl_gene_id) %>% filter(row_number() == 1) %>% join(testres, by="ensembl_gene_id", type="right") -> res
-#arrange(ensembl_gene_id) %>% df[!duplicated(df$date), ]
+anno_entrez %>% 
+  join(homologs,by="entrezgene",type="left", match = "first") %>% 
+  join(cmyo_genes,by="entrez.human",type="left", match = "first") %>% 
+  join(testres, by="ensembl_gene_id", type="right") %>% 
+  mutate(UPGENE=toupper(external_gene_name)) %>% 
+  left_join(mitogenes,by = "UPGENE") %>%
+  select(-UPGENE) %>%
+  group_by(ensembl_gene_id) %>% 
+  filter(row_number() == 1) %>% 
+  rename(gene=external_gene_name) -> res
 
-
-#anno_entrez<-ddply(anno_entrez,.(ensembl_gene_id),function(dt){dt[1,]})
-#row.names(anno_entrez)<-anno_entrez$ensembl_gene_id
-#res<-cbind(anno_entrez[testres$id,"external_gene_name"],testres)
-names(res)[1]<-"gene"
 write.csv(res,file=resfile)
 save(res,file=paste(resfile,"RData",sep="."),compress=TRUE)
-#genego convenience
+```
 
-unique_entrez<-ddply(entrez,.(ensembl_gene_id),function(dt){dt[1,]})
-row.names(unique_entrez)<-unique_entrez$ensembl_gene_id
-genego<-cbind(unique_entrez[res$gene,"entrezgene"],testres)
-names(genego)[1]<-"entrez"
-genego_sig<-subset(genego[,c("entrez","foldChange","padj")],padj < 0.05 & !is.na(entrez))
-write.xlsx(genego_sig, file=paste(tissue,"genego.xls",sep="."), row.names=FALSE)
+```{r genegoconv, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+#genego convenience
+res %>% filter(padj < 0.05 & !is.na(entrezgene)) %>% ungroup %>% select(entrez=entrezgene,foldChange,padj) -> genego_sig
+write.xlsx(data.frame(genego_sig), file=paste(tissue,"genego.xls",sep="."), row.names=FALSE)
 ```
 
 # Introduction
@@ -189,7 +183,6 @@ The following, sharing modes, which determine how much information is used to in
 * `maximum` is more conservative for three or four replicates, 
 * `gene-est-only` is more aggressive, and is ideal for many replicates
 
-
 For this report, we have used the `r method` method and `r sharingMode` sharing mode.
 
 Only genes with a combined count of `r minCount` among all the samples (both conditions and tissues)
@@ -199,14 +192,24 @@ Only genes with a combined count of `r minCount` among all the samples (both con
 ## Significantly DE genes in muscle
 Significantly differentially expressed genes (padj<`r myPval`). Fold change is ANT1/B6ME.
 
-```{r dePval, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
-#> names(res)
-# [1] "gene"                 "entrez.human"         "entrezgene"           "external_gene_name"  
-# [5] "cardiomyopathy_score" "baseMean"             "baseMeanA"            "baseMeanB"           
-# [9] "foldChange"           "log2FoldChange"       "pval"                 "padj"                
-res %>% select(gene=external_gene_name,ensid=gene,baseMean,bNorm=baseMeanA,bRB=baseMeanB,fc=foldChange,log2fc=log2FoldChange,pval,padj) %>% filter(padj<myPval) %>% arrange(pval)->resSig
+The `cmyo` column is the cardiomyopathy involvement score from http://www.disgenet.org.
 
-datatable(resSig, caption=paste("Significant (P<",myPval,") differential expression in ANT1 after the correction for multiple testing.",nrow(resSig),"genes."))
+The `MSeqDR` column will provide a link if the gene in question is one of 1363 MSeqDR mitochondrial genes.
+
+```{r dePval, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+      
+#> names(res)
+# [1] "ensembl_gene_id"      "entrez.human"         "entrezgene"           "gene"
+# "cardiomyopathy_score" "baseMean"             "baseMeanA"            "baseMeanB"            "foldChange"          
+#[10] "log2FoldChange"       "pval"                 "padj"        
+# > head(res)
+#      ensembl_gene_id entrez.human entrezgene  gene cardiomyopathy_score     baseMean    baseMeanA    baseMeanB foldChange log2FoldChange         pval         padj
+# 1 ENSMUSG00000000001         2773      14679 Gnai3                   NA 9.237222e-06 1.344489e-05 5.029555e-06  0.3740867     -1.4185553 1.365943e-07 5.695712e-06
+# 2 ENSMUSG00000000028         8318      12544 Cdc45                   NA 8.833663e-07 1.043980e-06 7.227526e-07  0.6923049     -0.5305205 5.979778e-01 7.214577e-01
+
+res %>% select(gene,ensid=ensembl_gene_id,baseMean,bNorm=baseMeanA,bRB=baseMeanB,fc=foldChange,log2fc=log2FoldChange,pval,padj,cmyo=cardiomyopathy_score,MSeqDR) %>% filter(padj<myPval) %>% arrange(pval)->resSig
+
+datatable(resSig, escape=FALSE, caption=paste("Significant (P<",myPval,") differential expression in ANT1 after the correction for multiple testing.",nrow(resSig),"genes."))
 ```
 
 ## Upregulated genes in muscle
@@ -214,7 +217,7 @@ datatable(resSig, caption=paste("Significant (P<",myPval,") differential express
 upRegs<-head(subset(resSig[order(-resSig$fc),],fc>1),n=50)
 
 if(nrow(upRegs)>0){
-  datatable(upRegs,caption=paste("Strongly significantly upregulated genes in ANT1 (top 50)",sep=""))
+  datatable(upRegs,escape=FALSE,caption=paste("Strongly significantly upregulated genes in ANT1 (top 50)",sep=""))
 }else{
   print("No significantly upregulated genes")
 }
@@ -226,7 +229,7 @@ if(nrow(upRegs)>0){
 downRegs<-head(subset(resSig[order(resSig$fc),],fc<=1),n=50)
 
 if(nrow(downRegs)>0){
-  datatable(downRegs,caption=paste("Strongly significantly downregulated genes in ANT1 (top 50)",sep=""))
+  datatable(downRegs,escape=FALSE,caption=paste("Strongly significantly downregulated genes in ANT1 (top 50)",sep=""))
 }else{
   print("No significantly downregulated genes")
 }
@@ -242,15 +245,15 @@ ggplot(res,aes(x=log2(baseMean),y=log2FoldChange))+geom_point(aes(color=padj<.01
 # Heart results
 ## Significantly DE genes in heart
 ```{r deheart, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
-res <- nbinomTest( cds, "HN", "HT")
+nbinomTest( cds, "HN", "HT") %>% rename(ensembl_gene_id = id) -> testres
 resfile<-HEART_RES
 tissue<-"heart"
 ```
 
-```{r heart_anno, ref.label='annotate', echo=TRUE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+```{r heart_anno, ref.label='annotate', echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
 ```
 
-```{r heart_depval, ref.label='dePval', echo=TRUE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+```{r heart_depval, ref.label='dePval', echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
 ```
 
 ## Upregulated genes in heart
@@ -264,7 +267,7 @@ tissue<-"heart"
 ## Fold Change and Significance heart
 Genes with high fold change may not be significantly differentially expressed simply due to high variance.
 
-```{r fcVsBasemeanheart, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+```{r fcVsBasemeanheart, echo=FALSE, message=FALSE, cache=FALSE, warning=FALSE, fig.path='{{SLINK}}/'}
 qplot(log2(res$baseMean),res$log2FoldChange)+aes(color=res$padj<.01)
 ```
 
