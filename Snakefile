@@ -403,11 +403,12 @@ rule htseq:
 ##### Report #####
 rule report:
     input:
-        COUNTS, star = STARLOGS, ercc = "ercc.counts", source = "diffExp.Rnw"
+        COUNTS, star = STARLOGS, ercc = "ercc.counts", source = "diffExp.Rmd"
     output:
-        state = "diffExp.state.RData", tex = "diffExp.tex", cds = "cds.df.RData", mr = "muscleResults.csv", hr = "heartResults.csv", raw = "raw_counts.tab.txt", norm = "normalized_counts.tab.txt"
+        state = "diffExp.state.RData", html = "diffExp.html",  cds = "cds.df.RData", mr = "muscleResults.csv", hr = "heartResults.csv", raw = "raw_counts.tab.txt", norm = "normalized_counts.tab.txt"
     run:
         R("""
+		library(rmarkdown)
 		STARLOGS<-"{input.star}"
 		ERCC_COUNTS<-"{input.ercc}"
 		RAW_COUNTS<-"{output.raw}"
@@ -423,7 +424,7 @@ rule report:
 		
 		samples<-c(MUSCLE_KO,MUSCLE_WT,HEART_KO,HEART_WT)
 		save(STARLOGS,ERCC_COUNTS,RAW_COUNTS,NORM_COUNTS,CDS_FILE,HEART_RES,MUSCLE_RES,MUSCLE_KO,MUSCLE_WT,HEART_KO,HEART_WT,samples,file="diffExp.state.RData")
-		Sweave("{input.source}",output="{output.tex}")
+		rmarkdown::render("{input.source}",output_file="{output.html}")
 		""")
 
 rule gage:
