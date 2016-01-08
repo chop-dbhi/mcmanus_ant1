@@ -1,7 +1,7 @@
 ---
 title: "Ant1-KO Differential Expression"
 author: "Jeremy Leipzig"
-date: "10/26/2015"
+date: "1/8/2016"
 output:
   html_document:
     toc: true
@@ -112,7 +112,7 @@ anno_entrez <- getBM(attributes = c("ensembl_gene_id","external_gene_name","entr
                  filters = "ensembl_gene_id", values = testres$ensembl_gene_id,
                  mart = mart)
 
-human = useMart("ensembl", dataset = "hsapiens_gene_ensembl")
+human = useMart(biomart = "ENSEMBL_MART_ENSEMBL", dataset = "hsapiens_gene_ensembl", host = "jul2015.archive.ensembl.org")
 
 get(load("cardiomyopathy.RData")) %>% rename(entrez.human=c2.geneId,cardiomyopathy_score=c0.score)->cmyo_genes
 
@@ -141,6 +141,7 @@ save(res,file=paste(resfile,"RData",sep="."),compress=TRUE)
 
 #genego convenience
 res %>% filter(padj < 0.05 & !is.na(entrezgene)) %>% ungroup %>% select(entrez=entrezgene,foldChange,padj) -> genego_sig
+today<-as.Date(Sys.Date(),"%Y%m%d")
 write.xlsx(data.frame(genego_sig), file=paste(tissue,"genego.xls",sep="."), row.names=FALSE)
 ```
 

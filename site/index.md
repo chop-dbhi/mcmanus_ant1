@@ -173,6 +173,6 @@ Code used to generate this analysis is located here [http://github.research.chop
 
 ### Git hash
 This should match the hash index on the last page of your report.
-```43502fa164c6b85ed8e697186a343c5a2f5a5acf```
+```d3e226a94f47d986d2234ee863d5760b30498738```
 
-Last modified ```2015-10-23 10:19:06```
+Last modified ```2016-01-08 10:23:08```
