@@ -140,8 +140,8 @@ write.csv(res,file=resfile)
 save(res,file=paste(resfile,"RData",sep="."),compress=TRUE)
 
 #genego convenience
-res %>% filter(padj <= 0.05 & !is.na(entrezgene)) %>% ungroup %>% select(entrez=entrezgene,foldChange,padj) -> genego_sig
-write.xlsx(data.frame(genego_sig), file=paste(tissue,"genego.xls",sep="."), row.names=FALSE)
+res %>% filter(!is.na(gene)) %>% ungroup %>% select(gene,log2FoldChange,padj) -> genego
+write.xlsx(data.frame(genego), file=paste(tissue,"genego.xls",sep="."), row.names=FALSE)
 ```
 
 # Introduction
@@ -236,7 +236,7 @@ if(nrow(downRegs)>0){
 }
 ```
 
-## Fold change and significance muscle
+## Log2 Fold change and significance muscle
 Genes with high fold change may not be significantly differentially expressed simply due to high variance.
 
 ```{r fcVsBasemeanmuscle, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
@@ -265,8 +265,8 @@ tissue<-"heart"
 ```{r downheart, ref.label='downreg', echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
 ```
 
-## Fold Change and Significance heart
-Genes with high fold change may not be significantly differentially expressed simply due to high variance.
+## Log2 Fold Change and Significance heart
+Genes with high log2 fold change may not be significantly differentially expressed simply due to high variance.
 
 ```{r fcVsBasemeanheart, echo=FALSE, message=FALSE, cache=FALSE, warning=FALSE, fig.path='{{SLINK}}/'}
 qplot(log2(res$baseMean),res$log2FoldChange)+aes(color=res$padj<.01)

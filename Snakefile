@@ -608,7 +608,7 @@ For brevity these output are hidden from this report.
 > [heartResults.csv]({0}/heartResults.csv)
 
 ### Convenience tables for Metacore aka GeneGo
-These are just lists of entrez identifiers, fold changes, and padj. Genes with adjusted pval <= .05 are included.
+These are just lists of HUGO identifiers, log2 fold changes, and padj. All genes with at least 100 reads across all lanes and HUGO mappings are included.
 > [heart.genego.xls]({0}/heart.genego.xls)
 
 > [muscle.genego.xls]({0}/muscle.genego.xls)    
