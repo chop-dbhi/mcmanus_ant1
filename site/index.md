@@ -75,7 +75,7 @@ For brevity these output are hidden from this report.
 > [heartResults.csv]({{SLINK}}/heartResults.csv)
 
 ### Convenience tables for Metacore aka GeneGo
-These are just lists of entrez identifiers, fold changes, and padj
+These are just lists of entrez identifiers, fold changes, and padj. Genes with adjusted pval <= .05 are included.
 > [heart.genego.xls]({{SLINK}}/heart.genego.xls)
 
 > [muscle.genego.xls]({{SLINK}}/muscle.genego.xls)    
@@ -173,6 +173,6 @@ Code used to generate this analysis is located here [http://github.research.chop
 
 ### Git hash
 This should match the hash index on the last page of your report.
-```d3e226a94f47d986d2234ee863d5760b30498738```
+```8667c1d74a221edb427cac088a964203b48cacc1```
 
-Last modified ```2016-01-08 10:23:08```
+Last modified ```2016-01-08 10:33:33```
