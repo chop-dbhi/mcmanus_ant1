@@ -141,7 +141,6 @@ save(res,file=paste(resfile,"RData",sep="."),compress=TRUE)
 
 #genego convenience
 res %>% filter(padj <= 0.05 & !is.na(entrezgene)) %>% ungroup %>% select(entrez=entrezgene,foldChange,padj) -> genego_sig
-today<-as.Date(Sys.Date(),"%Y%m%d")
 write.xlsx(data.frame(genego_sig), file=paste(tissue,"genego.xls",sep="."), row.names=FALSE)
 ```
 
