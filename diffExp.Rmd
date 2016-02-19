@@ -1,7 +1,7 @@
 ---
 title: "Ant1-KO Differential Expression"
 author: "Jeremy Leipzig"
-date: "1/8/2016"
+date: "2/16/2016"
 output:
   html_document:
     toc: true
@@ -12,7 +12,7 @@ library(Rsamtools)
 library(Biostrings)
 library(stringr)
 library(tidyr)
-library(reshape)
+library(reshape2)
 library(DESeq)
 library(ggplot2)
 source("/nas/is1/leipzig/ganguly/src/R/concat.R")
@@ -21,6 +21,10 @@ library(biomaRt)
 library(DT)
 library(xlsx)
 library(dplyr)
+library(knitr)
+library(printr)
+library(VennDiagram)
+library(UpSetR)
 ```
 
 
@@ -96,7 +100,8 @@ myPval<-.01
 
 ```{r conductTest, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
 #in prep for join, remember existing goes on the right
-nbinomTest( cds, "MN", "MT") %>% rename(ensembl_gene_id = id) -> testres
+#-Inf in Log2FoldChange causes a lot of display problems, set to extremely low value
+nbinomTest( cds, "MN", "MT") %>% rename(ensembl_gene_id = id) %>% mutate(log2FoldChange = ifelse(log2FoldChange == -Inf, log2(0.000001), log2FoldChange)) %>% mutate(log2FoldChange = ifelse(log2FoldChange == Inf, log2(1000000), log2FoldChange)) -> testres
 resfile<-MUSCLE_RES
 tissue<-"muscle"
 ```
@@ -140,7 +145,7 @@ write.csv(res,file=resfile)
 save(res,file=paste(resfile,"RData",sep="."),compress=TRUE)
 
 #genego convenience
-res %>% filter(!is.na(gene)) %>% ungroup %>% select(gene,log2FoldChange,padj) -> genego
+res %>% filter(!is.na(gene) & !is.na(log2FoldChange)) %>% ungroup %>% select(gene,log2FoldChange,padj) -> genego
 write.xlsx(data.frame(genego), file=paste(tissue,"genego.xls",sep="."), row.names=FALSE)
 ```
 
@@ -246,7 +251,7 @@ ggplot(res,aes(x=log2(baseMean),y=log2FoldChange))+geom_point(aes(color=padj<.01
 # Heart results
 ## Significantly DE genes in heart
 ```{r deheart, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
-nbinomTest( cds, "HN", "HT") %>% rename(ensembl_gene_id = id) -> testres
+nbinomTest( cds, "HN", "HT") %>% rename(ensembl_gene_id = id) %>% mutate(log2FoldChange = ifelse(log2FoldChange == -Inf, log2(0.000001), log2FoldChange)) %>% mutate(log2FoldChange = ifelse(log2FoldChange == Inf, log2(1000000), log2FoldChange)) -> testres
 resfile<-HEART_RES
 tissue<-"heart"
 ```
@@ -277,6 +282,73 @@ qplot(log2(res$baseMean),res$log2FoldChange)+aes(color=res$padj<.01)
 dists<-dist(t(counts(cds)))
 heatmap( as.matrix( dists ))
 ```
+
+# Comparing Heart and Muscle
+```{r hvm, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+extremeval=1000
+get(load("muscleResults.csv.RData")) %>% filter(!is.na(log2FoldChange)) %>% mutate(log2FoldChange = ifelse(log2FoldChange == -Inf, log2(1/extremeval), log2FoldChange)) %>% mutate(log2FoldChange = ifelse(log2FoldChange == Inf, log2(extremeval), log2FoldChange)) -> muscle_results
+
+get(load("heartResults.csv.RData")) %>% filter(!is.na(log2FoldChange)) %>% mutate(log2FoldChange = ifelse(log2FoldChange == -Inf, log2(1/extremeval), log2FoldChange)) %>% mutate(log2FoldChange = ifelse(log2FoldChange == Inf, log2(extremeval), log2FoldChange)) -> heart_results
+
+merge(heart_results,muscle_results,by="ensembl_gene_id") %>% select (ensembl_gene_id,log2FoldChange.x,log2FoldChange.y, padj.x, padj.y) %>% mutate(heartsig=padj.x<0.05) %>% mutate(musclesig=padj.y<0.05) %>%  rename(heart=log2FoldChange.x,muscle=log2FoldChange.y) %>% mutate(sig=ifelse(heartsig,ifelse(musclesig,"both","heartonly"),ifelse(musclesig,"muscleonly","neither"))) %>% 
+mutate(heartdir = ifelse(heartsig,ifelse(heart>0,"Up","Down"),"Unchanged"),muscledir = ifelse(musclesig,ifelse(heart>0,"Up","Down"),"Unchanged")) -> hvsm
+
+hvsm %>% select(ensembl_gene_id,heartdir,muscledir) %>% rename(gene=ensembl_gene_id,Heart=heartdir,Muscle=muscledir) %>% gather(tissue,movestate,c(Heart,Muscle)) %>% dcast(gene ~ tissue+movestate, function(x) as.integer(1), fill = as.integer(0)) -> binarymatrix
+binarymatrix$gene<-as.factor(binarymatrix$gene)
+```
+
+Contingency table: Significantly differentially expressed genes after adjustment for multiple comparisons (padj<0.05). Heart is the left - muscle on the top.
+
+```{r ctkvm, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+table(heart=hvsm$heartdir,muscle=hvsm$muscledir)
+
+
+ intersections <- list(list("Heart_Up", "Muscle_Down"), 
+                       list("Heart_Up","Muscle_Unchanged"),
+                      list("Heart_Up","Muscle_Up"),
+                      list("Heart_Down", "Muscle_Up"), 
+                      list("Heart_Down","Muscle_Unchanged"),
+                      list("Heart_Down","Muscle_Down"),
+                      list("Heart_Unchanged","Muscle_Up"),
+                      list("Heart_Unchanged","Muscle_Unchanged"),
+                      list("Heart_Unchanged","Muscle_Down"))
+
+ sets<-c("Heart_Up","Heart_Unchanged","Heart_Down","Muscle_Up","Muscle_Unchanged","Muscle_Down")
+  sets<-c("Muscle_Down","Heart_Up","Heart_Unchanged","Heart_Down","Muscle_Up","Muscle_Unchanged")
+queries <- list(
+    list(query = intersects, params = list("Heart_Up", 
+      "Muscle_Up"), color = "red", active = T),
+    list(query = intersects, params = list("Heart_Up", 
+      "Muscle_Down"), color = "black", active = T),
+    list(query = intersects, params = list("Heart_Up", 
+      "Muscle_Unchanged"), color = "orange", active = T),
+    list(query = intersects, params = list("Heart_Down", 
+      "Muscle_Down"), color = "blue", active = T),
+    list(query = intersects, params = list("Heart_Down", 
+      "Muscle_Up"), color = "black", active = T),
+    list(query = intersects, params = list("Heart_Down", 
+      "Muscle_Unchanged"), color = "purple", active = T),
+    list(query = intersects, params = list("Heart_Unchanged", 
+      "Muscle_Up"), color = "orange", active = T),
+    list(query = intersects, params = list("Heart_Unchanged", 
+      "Muscle_Down"), color = "purple", active = T),
+    list(query = intersects, params = list("Heart_Unchanged", 
+      "Muscle_Unchanged"), color = "grey", active = T)
+  )
+upset(binarymatrix,sets=sets,intersections = intersections,order.by = c("degree", "freq"), 
+  queries = queries
+)
+
+
+```
+
+Proportion table: Significantly differentially expressed genes after adjustment for multiple comparisons (padj<0.05). Heart is the left - muscle on the top.
+
+```{r prptkvm, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+round(prop.table(table(heart=hvsm$heartdir,muscle=hvsm$muscledir))*100,2)
+```
+
+
 
 # Session info
 The R session information (including the OS info, R version and all
