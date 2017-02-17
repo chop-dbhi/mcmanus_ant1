@@ -27,25 +27,10 @@ git submodule add git@github.research.chop.edu:BiG/rna-seq-common-functions.git 
 git submodule update --init
 ```
 
-###To run on raboso###
+####To run
 ```
 cd snake-env && source bin/activate
 snakemake -j 16
 ```
-
-###To run on variome###
-```
-source /nas/is1/leipzig/variome-env/bin/activate
-snakemake --directory /nas/is1/leipzig/martin/src --snakefile /nas/is1/leipzig/martin/src/Snakefile  -c qsub -j 16
-```
-
-###To run on respublica###
-Warning: Respublica has low RAM ceilings - some steps are better done on Raboso
-```
-source /mnt/isilon/cbmi/variome/leipzig/respublica-env/bin/activate
-snakemake --directory /mnt/isilon/cbmi/variome/leipzig/martin/src --snakefile /mnt/isilon/cbmi/variome/leipzig/martin/src/Snakefile -c qsub -j 16
-```
-
-To install Snakemake on your own server read this: http://github.research.chop.edu/gist/leipzigj/8
 
 [![Snakemake](https://img.shields.io/badge/snakemake-≥3.4.2-brightgreen.svg?style=flat-square)](https://bitbucket.org/johanneskoester/snakemake)
