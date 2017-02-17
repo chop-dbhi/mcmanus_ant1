@@ -1,7 +1,7 @@
-martin-ant1-rnaseq
+ant1-rnaseq
 ============
 
-rna-seq analysis for Martin Picard
+rna-seq analysis in heart (McManus) and muscle (Morrow)
 
 References from iGenomes:
 [UCSC](ftp://ussd-ftp.illumina.com/Mus_musculus/UCSC/mm10/Mus_musculus_UCSC_mm10.tar.gz)
