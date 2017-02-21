@@ -3,6 +3,14 @@ ant1-rnaseq
 
 rna-seq analysis in heart (McManus) and muscle (Morrow)
 
+##Sequences##
+###Heart Biosamples###
+```
+Submission ID SUB2425516
+BioProject ID PRJNA376146
+BioSample accessions SAMN06350839, SAMN06350840, SAMN06350841, SAMN06350842, SAMN06350843, SAMN06350844, SAMN06350845, SAMN06350846
+```
+
 References from iGenomes:
 [UCSC](ftp://ussd-ftp.illumina.com/Mus_musculus/UCSC/mm10/Mus_musculus_UCSC_mm10.tar.gz)
 or
