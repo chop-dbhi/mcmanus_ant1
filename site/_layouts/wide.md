@@ -1,1 +1,0 @@
-/nas/pb/leipzig/martin/src/site/_layouts/wide.md
