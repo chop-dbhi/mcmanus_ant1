@@ -4,9 +4,9 @@ import re
 import socket
 from time import gmtime, strftime
 
-MITOMAP = "leipzigj@rescommap01.research.chop.edu:/var/www/html/martin-rna-seq/"
+WEBSITE = "user@server:/pathtowebdir/"
 REFDIR = "refs/Mus_musculus/Ensembl/GRCm38/"
-TMPDIR = "../../../../../tmp/"
+TMPDIR = "/tmp/"
 FASTAREF = REFDIR + "Sequence/WholeGenomeFasta/genome.fa"
 STARREFDIR = REFDIR + "star/"
 CHRNAME = STARREFDIR + "chrName.txt"
@@ -21,20 +21,19 @@ S3_PROFILE = "leipzig"
 
 
 ##### TOOLS #####
-CUTADAPT = "../../../bin/cutadapt"
-BEDTOOLS = "../../../bin/BEDTools/2.16.2"
-NOVO = "../../../bin/Novoalign/3.00.02/novocraft"
-ALIGN = NOVO + "/novoalign"
-INDEX = NOVO + "/novoindex"
-SORT = NOVO + "/novosort"
+CUTADAPT = "cutadapt"
+BEDTOOLS = "bedtools"
+ALIGN = "novoalign"
+INDEX = "novoindex"
+SORT = "novosort"
 TOOLDIR = "tools"
-RNASEQC = TOOLDIR + "/RNA-SeQC_v1.1.7.jar"
-STAR = TOOLDIR + "/STAR_2.3.0e.Linux_x86_64/STAR"
-SAMTOOLS = TOOLDIR + "/samtools/samtools"
-CUFF = TOOLDIR + "/cufflinks-2.1.1.Linux_x86_64/cufflinks"
-CUFFMERGE = TOOLDIR + "/cufflinks-2.1.1.Linux_x86_64/cuffmerge"
-CUFFDIFF = TOOLDIR + "/cufflinks-2.1.1.Linux_x86_64/cuffdiff"
-EXPR = TOOLDIR + "/express-1.5.1-linux_x86_64/express"
+RNASEQC = TOOLDIR + "/RNA-SeQC_v1.1.8.jar"
+STAR = "star"
+SAMTOOLS = "samtools"
+CUFF = "cufflinks"
+CUFFMERGE = "cuffmerge"
+CUFFDIFF = "cuffdiff"
+EXPR = "express"
 
 # ANT1 evens
 MUSCLE_KO = "IonXpressRNA_002.R_2013_11_26_13_55_09_user_1PR-8-RNA-Seq_whole_transcriptome IonXpressRNA_004.R_2013_11_26_20_48_53_user_1PR-9-RNA-Seq_whole_transcriptome IonXpressRNA_006.R_2013_12_04_09_37_33_1PR-10-RNA-Seq_whole_transcriptome_76303 IonXpressRNA_008.R_2013_12_06_12_45_12_user_1PR-11-RNA-Seq_whole_transcriptome"
@@ -265,7 +264,7 @@ rule AddOrReplaceReadGroups:
     output:
         "{sample}.sorted.gatk.bam"
     shell:
-        "java -jar {TOOLDIR}/picard-tools-1.106/AddOrReplaceReadGroups.jar INPUT= {input} OUTPUT= {output} RGID= {wildcards.sample} LB= {wildcards.sample} RGPL= ionproton RGPU= martin RGSM= {wildcards.sample}"
+        "AddOrReplaceReadGroups INPUT= {input} OUTPUT= {output} RGID= {wildcards.sample} LB= {wildcards.sample} RGPL= ionproton RGPU= martin RGSM= {wildcards.sample}"
 
 rule index:
     input:
@@ -273,7 +272,7 @@ rule index:
     output:
         "{sample}.sorted.gatk.bam.bai"
     shell:
-        "java -jar {TOOLDIR}/picard-tools-1.106/BuildBamIndex.jar INPUT= {input} OUTPUT= {output}"
+        "BuildBamIndex INPUT= {input} OUTPUT= {output}"
 
 rule dict:
     input:
@@ -281,7 +280,16 @@ rule dict:
     output:
         "{ref}.dict"
     shell:
-        "java -jar picard-tools-1.106/CreateSequenceDictionary.jar REFERENCE= {input} OUTPUT= {output}"
+        "CreateSequenceDictionary REFERENCE= {input} OUTPUT= {output}"
+
+rule fetchRNASEQC:
+     output: RNASEQC
+     params: tooldir = TOOLDIR
+     shell:
+        """
+        mkdir -p {params.tooldir}
+        curl http://www.broadinstitute.org/cancer/cga/tools/rnaseqc/RNA-SeQC_v1.1.8.jar > {output}"
+        """
 
 # samplefile.rnaseqc.txt was made by hand so sue me
 rule rnaseqc:
@@ -331,7 +339,7 @@ rule cuffmerge:
         "cufflinks/merged.gtf"
     shell:
         """
-         /usr/local/bin/python2.7/python {CUFFMERGE} -o cufflinks -g {input.gtf} -s {input.ref} -p 16 {input}
+         {CUFFMERGE} -o cufflinks -g {input.gtf} -s {input.ref} -p 16 {input}
         """
 MUSCLE_KO_BAMS = ','.join(
     ['mapped/{0}.sorted.bam'.format(f) for f in MUSCLE_KO.split()])
@@ -668,7 +676,7 @@ rule publishsite:
     shell:
         """
         jekyll build --config site/_config.yml --source site --destination site/_site
-        rsync -v --update --rsh=ssh -r site/_site/* {MITOMAP}
+        rsync -v --update --rsh=ssh -r site/_site/* {WEBSITE}
         """
 
 rule publishdata:
@@ -676,7 +684,7 @@ rule publishdata:
         QCED, GAGE_GO_FILES, GAGE_KEGG_FILES, "diffExp.pdf", "topGO.pdf"
     shell:
         """
-        rsync -v --update --rsh=ssh -r diffExp.pdf topGO.pdf muscleResults.csv heartResults.csv fastqc raw_counts.tab.txt normalized_counts.tab.txt RNASEQC_DIR GAGE {MITOMAP}
+        rsync -v --update --rsh=ssh -r diffExp.pdf topGO.pdf muscleResults.csv heartResults.csv fastqc raw_counts.tab.txt normalized_counts.tab.txt RNASEQC_DIR GAGE {WEBSITE}
         """
 
 rule publishtracks:
