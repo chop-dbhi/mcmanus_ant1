@@ -32,25 +32,20 @@ or
 Transcript fasta:
 <ftp://ftp.ensembl.org/pub/release-74/fasta/mus_musculus/cdna/Mus_musculus.GRCm38.74.cdna.all.fa.gz>
 
-###Requires###
-- Python-3.3 (for Snakemake)
-- Snakemake-2.4.9
-- cutadapt
-- STAR_2.3.0e
-- Novosort-1.0
-- Cufflinks-2.1.1
-- express-1.5.1
-- RNA-SeQC_v1.1.7
-
-###Submodules###
+###Fetching requirements with conda###
 ```
-git submodule add git@github.research.chop.edu:BiG/rna-seq-common-functions.git common/rna-seq
-git submodule update --init
+#install miniconda
+wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
+bash miniconda.sh -b -p $HOME/miniconda
+export PATH="$HOME/miniconda/bin:$PATH"
+
+conda create --name ant1env --file requirements.txt
+source activate ant1env
 ```
 
 ####To run
 ```
-cd snake-env && source bin/activate
+source activate ant1env
 snakemake -j 16
 ```
 
